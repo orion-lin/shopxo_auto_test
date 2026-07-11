@@ -1,0 +1,32 @@
+# Python缓存文件
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+
+# 虚拟环境
+venv/
+env/
+ENV/
+
+# Allure报告、截图、日志（运行生成产物，不提交）
+logs/
+report/allure-results/
+report/allure-report/
+report/screenshot/
+
+# 本地环境配置（存放账号、驱动路径等本地配置）
+.env
+*.env
+
+# PyCharm/VSCode编辑器文件
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+
+# 系统临时文件
+.DS_Store
+Thumbs.db
