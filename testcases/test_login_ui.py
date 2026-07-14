@@ -17,7 +17,7 @@ class TestLoginUI:
     - 三个输入框都填写后点击登录才会完整提交表单
     """
 
-    def test_empty_username_all_errors(self, web_driver):
+    def test_TC_LOGIN_001(self, web_driver):
         """
         场景1：账号为空，校验三条空值错误提示完整流程
 
@@ -55,7 +55,7 @@ class TestLoginUI:
                 message=f"错误提示不匹配：期望包含'{expected_error}', 实际={error_messages}"
             )
 
-    def test_valid_username_empty_password(self, web_driver):
+    def test_TC_LOGIN_002(self, web_driver):
         """
         场景2：仅填写有效账号，校验密码为空完整流程
 
@@ -89,7 +89,7 @@ class TestLoginUI:
             message=f"错误提示不匹配：期望包含'{empty_pwd_data['expected_error']}', 实际={error_messages}"
         )
 
-    def test_valid_username_short_password(self, web_driver):
+    def test_TC_LOGIN_003(self, web_driver):
         """场景3：输入有效账号，校验密码格式错误（密码长度小于6位）
 
         操作步骤：
@@ -119,7 +119,7 @@ class TestLoginUI:
             message=f"错误提示不匹配：期望包含'{short_pwd_data['expected_error']}', 实际={error_messages}"
         )
 
-    def test_valid_username_long_password(self, web_driver):
+    def test_TC_LOGIN_004(self, web_driver):
         """
         场景4：输入有效账号，校验密码格式错误（密码长度大于18位）
 
@@ -150,7 +150,7 @@ class TestLoginUI:
             message=f"错误提示不匹配：期望包含'{long_pwd_data['expected_error']}', 实际={error_messages}"
         )
 
-    def test_normal_login_success(self, web_driver):
+    def test_TC_LOGIN_005(self, web_driver):
         """
         场景5：使用正确的账号和密码登录系统，验证登录成功
 
@@ -201,7 +201,7 @@ class TestLoginUI:
             message="登录失败：页面未跳转或未显示登录成功提示"
         )
 
-    def test_wrong_password_login(self, web_driver):
+    def test_TC_LOGIN_006(self, web_driver):
         """
         场景6：账号正确但密码错误时点击登录，验证系统提示
 
@@ -244,7 +244,7 @@ class TestLoginUI:
             message=f"错误提示不匹配：期望包含'{wrong_pwd_data['expected_error']}', 实际={error_messages}"
         )
 
-    def test_wrong_captcha_login(self, web_driver):
+    def test_TC_LOGIN_007(self, web_driver):
         """
         场景7：验证码输入错误时点击登录，验证系统提示
 
@@ -284,7 +284,7 @@ class TestLoginUI:
             message=f"错误提示不匹配：期望包含'{empty_captcha_data['expected_error']}', 实际={error_messages}"
         )
 
-    def test_unauthorized_access_cart(self, web_driver):
+    def test_TC_LOGIN_008(self, web_driver):
         """
         场景8：未登录状态访问需授权页面，验证跳转逻辑
 
