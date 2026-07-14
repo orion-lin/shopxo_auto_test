@@ -1,0 +1,32 @@
+# 测试数据模板文件
+# 请在此文件中手动补充业务测试数据
+
+# ==================== 用户账号信息 ====================
+# user_account:
+#   username: ""
+#   password: ""
+#   phone: ""
+#   email: ""
+
+# ==================== 商品数据 ====================
+# goods_data:
+#   goods_id: ""
+#   goods_name: ""
+#   goods_price: ""
+#   goods_category: ""
+
+# ==================== 接口地址 ====================
+# api_endpoints:
+#   login: ""
+#   logout: ""
+#   goods_list: ""
+#   goods_detail: ""
+#   cart_add: ""
+#   cart_list: ""
+#   order_create: ""
+#   order_list: ""
+
+# ==================== 其他测试数据 ====================
+# other_data:
+#   search_keyword: ""
+#   test_code: ""

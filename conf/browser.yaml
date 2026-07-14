@@ -1,0 +1,68 @@
+
+# 浏览器配置文件
+# Chrome浏览器相关配置
+
+# 浏览器类型：chrome / firefox / edge / safari
+browser: chrome
+
+# Chrome浏览器版本（用于webdriver-manager自动匹配）
+chrome_version: 150.0.7871.115
+
+# 驱动模式：local(本地指定驱动) / auto(webdriver-manager自动下载)
+driver_mode: local
+
+# 本地ChromeDriver路径（仅driver_mode为local时生效）
+# Windows系统路径使用原始字符串，避免转义问题
+driver_path: D:\BcTool\Pycharm\Driver\chromedriver-win64\chromedriver.exe
+
+# 窗口大小（当maximize_window为false时生效）
+window_width: 1920
+window_height: 1080
+
+# 页面加载超时时间（秒）
+page_load_timeout: 30
+
+# 隐式等待时间（秒）
+implicit_wait: 10
+
+# 显式等待最大超时时间（秒）
+explicit_wait: 15
+
+# 轮询间隔时间（毫秒）
+poll_frequency: 500
+
+# 是否启用无头模式
+headless: false
+
+# 是否启用GPU加速（headless模式下建议关闭）
+gpu: true
+
+# 页面加载策略：normal / eager / none
+load_strategy: normal
+
+# 是否启用DevTools协议日志
+enable_logging: false
+
+# 日志级别：DEBUG / INFO / WARNING / ERROR
+log_level: INFO
+
+# 是否保存页面性能日志
+performance_log: false
+
+# 是否保存浏览器控制台日志
+console_log: false
+
+# 用户代理字符串（留空使用默认）
+user_agent: ""
+
+# 浏览器语言设置
+language: zh-CN
+
+# 是否禁用图片加载（加速页面加载）
+disable_images: false
+
+# 是否禁用JavaScript（谨慎使用）
+disable_javascript: false
+
+# 下载文件保存路径（留空使用系统默认）
+download_path: ""

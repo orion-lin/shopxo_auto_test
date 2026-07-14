@@ -1,0 +1,54 @@
+#UI页面测试数据
+# 搜索模块
+search:
+  search_keyword: "手机"
+  no_match_keyword: "水果"
+  expected_min_results: 1
+  success_message: "加入购物车成功"
+
+# 商品详情模块
+product_detail:
+  default_quantity: 1
+  specs_to_select:
+    - "颜色"
+    - "尺寸"
+
+# 登录模块
+login:
+  normal:
+    username: "qqqqqq"
+    password: "qqqqqq"
+  empty_all:
+    username: ""
+    password: ""
+    captcha: ""
+    expected_errors_step1:
+      - "请输入登录账号"
+    expected_errors_step2:
+      - "请输入登录账号"
+      - "密码格式6~18个字符之间"
+      - "请输入有效的图形验证码"
+  empty_user:
+    username: ""
+    password: "qqqqqq"
+    expected_error: "请输入登录账号"
+  empty_pwd:
+    username: "qqqqqq"
+    password: ""
+    expected_error: "密码格式6~18个字符之间"
+  password_too_short:
+    username: "qqqqqq"
+    password: "123"
+    expected_error: "密码格式6~18个字符之间"
+  password_too_long:
+    username: "qqqqqq"
+    password: "1234567890123456789"
+    expected_error: "密码格式6~18个字符之间"
+  wrong_pwd:
+    username: "qqqqqq"
+    password: "123456"
+    expected_error: "密码错误"
+  empty_captcha:
+    username: "qqqqqq"
+    password: "qqqqqq"
+    expected_error: "验证码错误"

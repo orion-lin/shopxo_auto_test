@@ -1,0 +1,31 @@
+api_host: "https://d2.shopxo.vip"
+# 登录接口
+login_api:
+  path: "/user/login"
+  username: "qqqqqq"
+  password: "qqqqqq"
+  success_msg: "登录成功"
+# 登录错误场景
+login_errors:
+  empty_user:
+    username: ""
+    password: "qqqqqq"
+    expected_code: 400
+    expected_msg: "请输入登录账号"
+  empty_pwd:
+    username: "qqqqqq"
+    password: ""
+    expected_code: 400
+    expected_msg: "密码格式6~18个字符之间"
+  wrong_pwd:
+    username: "qqqqqq"
+    password: "123456"
+    expected_code: 400
+    expected_msg: "账号或密码不正确"
+# 未授权访问
+unauthorized:
+  expected_code: 400
+  expected_msg: "未授权，请先登录"
+# 购物车接口
+cart_list:
+  path: "/cart/stock.html"
