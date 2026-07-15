@@ -16,6 +16,10 @@ class SearchPage:
     # ================================================
     # 搜索结果数量文本（如"筛选出5条数据"）
     SEARCH_RESULT_COUNT = (By.XPATH, "//*[contains(text(), '筛选出') and contains(text(), '条数据')]")
+    # 搜索结果数量strong标签（如<strong class="map-result-count am-text-danger">5</strong>）
+    SEARCH_RESULT_COUNT_STRONG = (By.XPATH, "//strong[@class='map-result-count am-text-danger']")
+    # 搜索结果数量容器（p标签结构）
+    SEARCH_RESULT_COUNT_P = (By.XPATH, "//p[@class='am-fl']//strong[contains(@class,'map-result-count')]")
     # 商品列表项 - 获取所有商品卡片（通过包含商品图片和链接的元素）
     PRODUCT_ITEMS = (By.XPATH, "//div[contains(@class, 'am-u-md') or contains(@class, 'am-u-sm') or contains(@class, 'goods-item') or contains(@class, 'list-item')]")
     # 第一个商品项
@@ -67,6 +71,7 @@ class SearchPage:
     def wait_search_results_loaded(self, timeout=10):
         """
         等待搜索结果加载完成
+        直接等待商品列表项加载，不再定位搜索结果数量元素
 
         Args:
             timeout (int): 超时时间，默认10秒
@@ -74,17 +79,11 @@ class SearchPage:
         logger.info("等待搜索结果加载完成")
         try:
             wait = self._get_wait(timeout=timeout)
-            wait.until(EC.visibility_of_element_located(self.SEARCH_RESULT_COUNT))
-            logger.info("搜索结果数量已加载")
+            wait.until(EC.visibility_of_element_located(self.PRODUCT_ITEMS))
+            logger.info("商品列表项已加载")
         except TimeoutException:
-            logger.info("搜索结果数量定位失败，尝试等待商品列表项")
-            try:
-                wait = self._get_wait(timeout=5)
-                wait.until(EC.visibility_of_element_located(self.PRODUCT_ITEMS))
-                logger.info("商品列表项已加载")
-            except TimeoutException:
-                logger.error("搜索结果加载超时")
-                raise
+            logger.error("搜索结果加载超时")
+            raise
         except Exception as e:
             logger.error(f"等待搜索结果加载失败: {str(e)}", exc_info=True)
             raise
@@ -99,9 +98,41 @@ class SearchPage:
         logger.info("获取搜索结果商品数量")
         try:
             self.wait_search_results_loaded()
+
+            wait = self._get_wait(timeout=3)
+            
+            try:
+                element = wait.until(EC.visibility_of_element_located(self.SEARCH_RESULT_COUNT_P))
+                count_text = element.text.strip()
+                count = int(count_text) if count_text.isdigit() else 0
+                logger.info(f"搜索结果商品数量(从p标签结构获取): {count}")
+                return count
+            except TimeoutException:
+                logger.info("p标签结构定位失败，尝试直接定位strong标签")
+            
+            try:
+                element = wait.until(EC.visibility_of_element_located(self.SEARCH_RESULT_COUNT_STRONG))
+                count_text = element.text.strip()
+                count = int(count_text) if count_text.isdigit() else 0
+                logger.info(f"搜索结果商品数量(从strong标签获取): {count}")
+                return count
+            except TimeoutException:
+                logger.info("搜索结果数量strong标签定位失败，尝试JS获取")
+            
+            try:
+                js_result = self.driver.execute_script(
+                    "var el = document.querySelector('strong.map-result-count'); return el ? el.textContent.trim() : '';"
+                )
+                if js_result and js_result.isdigit():
+                    count = int(js_result)
+                    logger.info(f"搜索结果商品数量(从JS获取): {count}")
+                    return count
+            except Exception as e:
+                logger.info(f"JS获取失败: {str(e)}")
+            
             elements = self.driver.find_elements(*self.PRODUCT_ITEMS)
             count = len(elements)
-            logger.info(f"搜索结果商品数量: {count}")
+            logger.info(f"搜索结果商品数量(从商品列表获取): {count}")
             return count
         except Exception as e:
             logger.error(f"获取商品数量失败: {str(e)}", exc_info=True)
@@ -131,77 +162,49 @@ class SearchPage:
     def click_first_product(self):
         """
         点击第一个商品，跳转商品详情页
+        流程：先滚动页面使首个商品可见，再定位并点击商品
         处理target="_blank"问题：先移除target属性再点击，避免打开新标签页
-        处理元素不可见问题：先滚动页面确保元素进入可视区域
         """
         logger.info("点击第一个商品")
         try:
-            self.driver.execute_script("window.scrollTo(0, 0);")
-            import time
-            time.sleep(1)
+            logger.info("先滚动页面使首个商品可见")
+            self.driver.execute_script("window.scrollTo({top: 500, behavior: 'smooth'});")
 
-            try:
-                wait = self._get_wait(timeout=10)
-                goods_info_links = wait.until(EC.presence_of_all_elements_located(
-                    (By.XPATH, "//a[contains(@class, 'goods-info')]")
-                ))
-                
-                if goods_info_links:
-                    first_link = goods_info_links[0]
-                    self.driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", first_link)
-                    time.sleep(2)
-                    
-                    href = first_link.get_attribute("href")
-                    product_name = first_link.get_attribute("title") or ""
-                    logger.info(f"找到商品链接: {href}")
-                    logger.info(f"商品名称: {product_name}")
-                    
-                    self.driver.execute_script("arguments[0].removeAttribute('target');", first_link)
-                    self.driver.execute_script("arguments[0].removeAttribute('rel');", first_link)
-                    first_link.click()
-                    logger.info("商品详情链接点击成功（已移除target属性）")
-                    return
-            except TimeoutException:
-                logger.info("未找到goods-info链接，尝试其他定位方式")
+            wait = self._get_wait(timeout=10)
+            first_link = wait.until(EC.element_to_be_clickable(
+                (By.XPATH, "//a[contains(@class, 'goods-info')]")
+            ))
 
+            logger.info("找到商品链接，滚动至可见区域")
+            self.driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", first_link)
+
+            href = first_link.get_attribute("href")
+            product_name = first_link.get_attribute("title") or ""
+            logger.info(f"商品名称: {product_name}")
+            logger.info(f"商品链接: {href}")
+
+            self.driver.execute_script("arguments[0].removeAttribute('target');", first_link)
+            self.driver.execute_script("arguments[0].removeAttribute('rel');", first_link)
+            first_link.click()
+            logger.info("商品详情链接点击成功（已移除target属性）")
+
+        except TimeoutException:
+            logger.info("未找到goods-info链接，尝试其他定位方式")
+
+            logger.info("再次滚动页面")
+            self.driver.execute_script("window.scrollTo({top: 800, behavior: 'smooth'});")
+            
             first_product = self.get_first_product_element()
             if not first_product:
-                logger.error("未找到第一个商品元素，尝试直接点击第一个商品链接")
-                try:
-                    wait = self._get_wait()
-                    first_link = wait.until(EC.element_to_be_clickable(
-                        (By.XPATH, "(//a[@title])[1]")
-                    ))
-                    self.driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", first_link)
-                    time.sleep(2)
-                    
-                    product_name = first_link.get_attribute("title") or first_link.text
-                    logger.info(f"点击商品: {product_name}")
-                    
-                    self.driver.execute_script("arguments[0].removeAttribute('target');", first_link)
-                    first_link.click()
-                    return
-                except Exception:
-                    raise NoSuchElementException("未找到第一个商品元素")
+                logger.error("未找到第一个商品元素")
+                raise NoSuchElementException("未找到第一个商品元素")
 
             self.driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", first_product)
-            time.sleep(2)
 
             product_name = self.get_product_name_from_element(first_product)
             logger.info(f"点击商品: {product_name}")
 
             try:
-                goods_info_link = first_product.find_element(By.XPATH, ".//a[contains(@class, 'goods-info')]")
-                href = goods_info_link.get_attribute("href")
-                logger.info(f"找到商品链接: {href}")
-                
-                self.driver.execute_script("arguments[0].removeAttribute('target');", goods_info_link)
-                self.driver.execute_script("arguments[0].removeAttribute('rel');", goods_info_link)
-                goods_info_link.click()
-                
-                logger.info("商品详情链接点击成功（已移除target属性）")
-            except NoSuchElementException:
-                logger.info("未找到goods-info链接，尝试查找包含goods的链接")
                 link_elements = first_product.find_elements(By.TAG_NAME, "a")
                 product_link = None
                 for link in link_elements:
@@ -209,24 +212,21 @@ class SearchPage:
                     if href and ("goods" in href or "/item/" in href or "/product/" in href):
                         product_link = link
                         break
-                
+
                 if product_link:
                     self.driver.execute_script("arguments[0].removeAttribute('target');", product_link)
-                    self.driver.execute_script("arguments[0].removeAttribute('rel');", product_link)
                     product_link.click()
-                    logger.info("商品详情链接点击成功（已移除target属性）")
                 elif link_elements:
-                    logger.info(f"找到{len(link_elements)}个链接，点击第一个")
                     self.driver.execute_script("arguments[0].removeAttribute('target');", link_elements[0])
                     link_elements[0].click()
                 else:
-                    logger.info("未找到链接，点击商品卡片本身")
                     self.driver.execute_script("arguments[0].click();", first_product)
+
+                logger.info("第一个商品点击成功")
             except Exception as e:
                 logger.error(f"点击商品链接异常: {str(e)}")
                 self.driver.execute_script("arguments[0].click();", first_product)
 
-            logger.info("第一个商品点击成功")
         except Exception as e:
             logger.error(f"点击第一个商品失败: {str(e)}", exc_info=True)
             raise

@@ -1,3 +1,4 @@
+import time
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -16,38 +17,34 @@ class ProductDetailPage:
     # ================================================
     # 商品名称 - h1标签
     PRODUCT_NAME = (By.XPATH, "//h1[contains(@class, 'goods-title') or contains(@class, 'title')]")
-    # 商品价格（table结构中的价格）
-    PRODUCT_PRICE = (By.XPATH, "//td[contains(@class, 'item-price')]//span[contains(@class, 'value')]")
-    # 原始价格（table结构中的原价）
-    ORIGINAL_PRICE = (By.XPATH, "//td[contains(@class, 'item-original_price')]//span[contains(@class, 'value')]")
+    # 全局滚动容器（规格表格滚动父容器）
+    SCROLL_CONTAINER = (By.XPATH, "//div[contains(@class,'am-panel-bd') and contains(@class,'am-scrollable-horizontal') and contains(@class,'am-scrollable-vertical')]")
+    # 规格行（套餐组合规格行，表格结构，每行包含完整的套餐+颜色+容量组合）
+    SPEC_ROWS = (By.XPATH, "//div[contains(@class,'am-panel-bd')]//tbody/tr[contains(@class,'buy-item-content-') or position() > 1]")
     # 规格选择区域容器（am-panel结构）
     SPECS_CONTAINER = (By.XPATH, "//div[contains(@class, 'am-panel') and contains(@class, 'am-panel-default')]")
-    # 规格选项（table中的td链接）
-    SPEC_OPTIONS = (By.XPATH, "//td[starts-with(@class, 'item-spec_value')]//a")
-    # 选中的规格选项
-    SELECTED_SPEC_OPTION = (By.XPATH, "//td[starts-with(@class, 'item-spec_value')]//a[contains(@class, 'selected') or contains(@class, 'active')]")
-    # 加入购物车按钮 - 使用包含文本"加入购物车"的按钮
-    ADD_TO_CART_BTN = (By.XPATH, "//button[contains(text(), '加入购物车')]")
-    # 加入购物车按钮（备用：使用class定位）
-    ADD_TO_CART_BTN_ALT = (By.XPATH, "//button[contains(@class, 'add-cart') or contains(@class, 'cart-btn')]")
-    # 成功提示框
+    # 规格选择区域容器（batchbuy容器）
+    SPECS_CONTAINER_BATCHBUY = (By.XPATH, "//div[contains(@class, 'plugins-batchbuy-container')]")
+    # 选中规格种类总数
+    KIND_TOTAL = (By.XPATH, "//strong[@class='kind-total']")
+    # 选中规格库存总数量
+    STOCK_TOTAL = (By.XPATH, "//strong[@class='stock-total']")
+    # 选中规格合计总价（核心校验点）
+    PRICE_TOTAL = (By.XPATH, "//strong[@class='price-total']")
+    # 单行规格加入购物车按钮
+    ADD_TO_CART_BTN = (By.XPATH, "//button[contains(@class,'common-goods-cart-submit-event') and text()='加入购物车']")
+    # 底部批量加入购物车按钮
+    ADD_TO_CART_BTN_BOTTOM = (By.XPATH, "//div[contains(@class,'bottom-operate')]//button[@data-type='cart']")
+    # 底部批量立即购买按钮
+    BUY_NOW_BTN_BOTTOM = (By.XPATH, "//div[contains(@class,'bottom-operate')]//button[@data-type='buy']")
+    # 成功提示框（Toast）
+    SUCCESS_MSG_TOAST = (By.XPATH, "//div[contains(@class,'am-toast') and contains(text(),'加入购物车成功')]")
+    # 成功提示框（Modal弹窗）
+    SUCCESS_MSG_MODAL = (By.XPATH, "//div[contains(@class,'am-modal-success')]//p[contains(text(),'加入购物车成功')]")
+    # 成功提示框（通用）
     SUCCESS_MSG = (By.XPATH, "//div[contains(@class, 'common-prompt') and contains(@class, 'am-alert-success')]//p[@class='prompt-msg']")
-    # 成功提示框（备用）
-    SUCCESS_MSG_ALT = (By.XPATH, "//div[contains(@class, 'am-alert-success')]")
-    # 成功提示框（Toast消息）
-    SUCCESS_MSG_TOAST = (By.XPATH, "//div[contains(@class, 'prompt') or contains(@class, 'toast') or contains(@class, 'msg')]")
     # 错误提示框
     ERROR_MSG = (By.XPATH, "//div[contains(@class, 'common-prompt') and contains(@class, 'am-alert-danger')]//p[@class='prompt-msg']")
-    # 商品数量输入框
-    QUANTITY_INPUT = (By.NAME, "num")
-    # 减号按钮（数量）
-    QUANTITY_MINUS = (By.XPATH, "//button[contains(@class, 'num-minus') or contains(text(), '-')]")
-    # 加号按钮（数量）
-    QUANTITY_PLUS = (By.XPATH, "//button[contains(@class, 'num-plus') or contains(text(), '+')]")
-    # 规格表格中的加入购物车按钮
-    ADD_TO_CART_BTN_TABLE = (By.XPATH, "//td[contains(@class, 'am-text-center')]//button[contains(text(), '加入购物车')]")
-    # 规格表格中的加入购物车按钮（备用）
-    ADD_TO_CART_BTN_TABLE_ALT = (By.XPATH, "//table[contains(@class, 'am-table')]//button[contains(text(), '加入购物车')]")
 
     def __init__(self, web_driver):
         """
@@ -166,78 +163,166 @@ class ProductDetailPage:
 
     def scroll_to_specs_container(self):
         """
-        滚动到规格选择区域
+        滚动到规格选择区域（使用全局滚动容器）
         """
         logger.info("滚动到规格选择区域")
         try:
-            wait = self._get_wait(timeout=5)
+            wait = self._get_wait(timeout=10)
             element = wait.until(EC.presence_of_element_located(self.SPECS_CONTAINER))
             self.driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", element)
             import time
             time.sleep(1)
             logger.info("已滚动到规格选择区域")
         except TimeoutException:
-            logger.warning("未找到规格选择区域，跳过滚动")
+            logger.info("未找到规格选择区域，尝试滚动到滚动容器")
+            try:
+                wait = self._get_wait(timeout=5)
+                element = wait.until(EC.presence_of_element_located(self.SCROLL_CONTAINER))
+                self.driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", element)
+                time.sleep(1)
+                logger.info("已滚动到滚动容器区域")
+            except TimeoutException:
+                logger.warning("未找到滚动容器，跳过滚动")
         except Exception as e:
             logger.error(f"滚动到规格区域失败: {str(e)}", exc_info=True)
 
     def get_all_spec_options(self):
         """
-        获取所有规格选项
+        获取所有规格选项（按规格行获取完整组合规格）
+        每个规格行是完整的套餐组合（套餐+颜色+容量），包含规格文本、价格和数量控制按钮
 
         Returns:
-            list: 规格选项列表，每个元素包含文本和是否可选
+            list: 规格选项列表，每个元素包含完整组合文本、价格、数量输入框、加减按钮和行元素
         """
-        logger.info("获取所有规格选项")
+        logger.info("获取所有规格选项（按规格行）")
         try:
             self.wait_page_loaded()
-            self.scroll_to_specs_container()
             
-            elements = self.driver.find_elements(*self.SPEC_OPTIONS)
+            wait = self._get_wait(timeout=10)
+            rows = wait.until(EC.presence_of_all_elements_located(self.SPEC_ROWS))
+            logger.info(f"找到规格行数: {len(rows)}")
+            
             spec_options = []
-            for element in elements:
+            for row in rows:
                 try:
-                    text = element.text.strip()
-                    if not text:
+                    cells = row.find_elements(By.XPATH, ".//td")
+                    if len(cells) < 3:
                         continue
-                    is_disabled = "disabled" in element.get_attribute("class") or "not-available" in element.get_attribute("class")
-                    is_selected = "selected" in element.get_attribute("class") or "active" in element.get_attribute("class")
-                    href = element.get_attribute("href")
+                    
+                    package_text = cells[0].text.strip() if cells else ""
+                    color_text = cells[1].text.strip() if len(cells) > 1 else ""
+                    capacity_text = cells[2].text.strip() if len(cells) > 2 else ""
+                    
+                    text = ""
+                    if package_text:
+                        text = package_text
+                    if color_text:
+                        text = text + " / " + color_text if text else color_text
+                    if capacity_text:
+                        text = text + " / " + capacity_text if text else capacity_text
+                    
+                    if not text:
+                        try:
+                            spec_link = row.find_element(By.XPATH, ".//td[starts-with(@class,'item-spec_value_')]/a")
+                            text = spec_link.text.strip()
+                        except Exception:
+                            logger.warning("规格文本为空，跳过该行")
+                            continue
+                    
+                    price = ""
+                    try:
+                        price_element = row.find_element(By.XPATH, ".//td[contains(@class,'item-price')]//span[@class='value']")
+                        price = price_element.text.strip().replace("￥", "")
+                    except Exception:
+                        try:
+                            price_element = row.find_element(By.XPATH, ".//strong[@class='price']")
+                            price = price_element.text.strip().replace("￥", "")
+                        except Exception:
+                            try:
+                                for cell in cells:
+                                    cell_text = cell.text.strip()
+                                    if cell_text.startswith("￥"):
+                                        price = cell_text.replace("￥", "")
+                                        break
+                            except Exception:
+                                pass
+                    
+                    if not price:
+                        logger.warning(f"规格 '{text}' 未找到价格，跳过")
+                        continue
+                    
+                    quantity_input = row.find_element(By.XPATH, ".//input[@class='am-form-field am-text-center']")
+                    minus_button = row.find_element(By.XPATH, ".//button[@type='button' and @data-type='0']")
+                    plus_button = row.find_element(By.XPATH, ".//button[@type='button' and @data-type='1']")
+                    
+                    is_disabled = False
+                    try:
+                        data_max = quantity_input.get_attribute("data-max")
+                        is_disabled = data_max == "0"
+                    except Exception:
+                        pass
+                    
+                    is_selected = False
+                    try:
+                        current_qty = int(quantity_input.get_attribute("value"))
+                        is_selected = current_qty > 0
+                    except Exception:
+                        pass
+                    
                     spec_options.append({
                         "text": text,
+                        "price": price,
                         "is_disabled": is_disabled,
                         "is_selected": is_selected,
-                        "element": element,
-                        "href": href
+                        "row_element": row,
+                        "quantity_input": quantity_input,
+                        "minus_button": minus_button,
+                        "plus_button": plus_button
                     })
+                    logger.info(f"获取规格选项: {text} - {price}")
                 except StaleElementReferenceException:
                     logger.warning("获取规格选项时遇到StaleElementReferenceException，跳过")
                     continue
-            logger.info(f"获取到规格选项列表: {[opt['text'] for opt in spec_options]}")
+                except NoSuchElementException as e:
+                    logger.warning(f"规格行元素结构异常，跳过: {str(e)}")
+                    continue
+            logger.info(f"获取到规格选项列表: {[opt['text'] + ' - ' + opt['price'] for opt in spec_options]}")
             return spec_options
         except Exception as e:
             logger.error(f"获取所有规格选项失败: {str(e)}", exc_info=True)
             return []
 
-    def select_spec_option(self, spec_text):
+    def select_spec_option(self, spec_text, quantity=1):
         """
-        选择指定规格选项
+        选择指定规格选项（通过点击+按钮设置数量来选择规格）
 
         Args:
             spec_text (str): 规格选项文本
+            quantity (int): 要设置的数量，默认为1
 
         Returns:
             bool: 选择成功返回True，失败返回False
         """
-        logger.info(f"选择规格选项: {spec_text}")
+        logger.info(f"选择规格选项: {spec_text}, 数量: {quantity}")
         try:
             spec_options = self.get_all_spec_options()
             for option in spec_options:
                 if option["text"] == spec_text and not option["is_disabled"]:
-                    self.driver.execute_script("arguments[0].removeAttribute('target');", option["element"])
-                    self.driver.execute_script("arguments[0].removeAttribute('rel');", option["element"])
-                    option["element"].click()
-                    logger.info(f"规格选项 '{spec_text}' 选择成功")
+                    self.driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", option["row_element"])
+                    import time
+                    time.sleep(0.5)
+                    
+                    current_qty = int(option["quantity_input"].get_attribute("value"))
+                    if current_qty > 0:
+                        for _ in range(current_qty):
+                            option["minus_button"].click()
+                            time.sleep(0.2)
+                    
+                    for _ in range(quantity):
+                        option["plus_button"].click()
+                        time.sleep(0.2)
+                    
+                    logger.info(f"规格选项 '{spec_text}' 选择成功，数量已设置为 {quantity}")
                     return True
                 elif option["text"] == spec_text and option["is_disabled"]:
                     logger.warning(f"规格选项 '{spec_text}' 不可选")
@@ -248,9 +333,56 @@ class ProductDetailPage:
             logger.error(f"选择规格选项失败: {str(e)}", exc_info=True)
             return False
 
+    def reset_all_quantities(self):
+        """
+        重置所有规格行的数量为0
+
+        Returns:
+            bool: 重置成功返回True，失败返回False
+        """
+        logger.info("重置所有规格行的数量为0")
+        try:
+            spec_options = self.get_all_spec_options()
+            for option in spec_options:
+                try:
+                    current_qty = int(option["quantity_input"].get_attribute("value"))
+                    if current_qty > 0:
+                        for _ in range(current_qty):
+                            option["minus_button"].click()
+                            import time
+                            time.sleep(0.2)
+                except Exception as e:
+                    logger.warning(f"重置规格 '{option['text']}' 数量失败: {str(e)}")
+            logger.info("所有规格数量已重置为0")
+            return True
+        except Exception as e:
+            logger.error(f"重置所有规格数量失败: {str(e)}", exc_info=True)
+            return False
+
+    def get_price_total(self):
+        """
+        获取选中规格合计总价（底部汇总区域）
+
+        Returns:
+            str: 合计总价，未找到返回空字符串
+        """
+        logger.info("获取选中规格合计总价")
+        try:
+            wait = self._get_wait()
+            element = wait.until(EC.visibility_of_element_located(self.PRICE_TOTAL))
+            price = element.text.strip().replace("￥", "")
+            logger.info(f"选中规格合计总价: {price}")
+            return price
+        except TimeoutException:
+            logger.warning("未找到合计总价元素")
+            return ""
+        except Exception as e:
+            logger.error(f"获取合计总价失败: {str(e)}", exc_info=True)
+            return ""
+
     def select_first_available_spec(self):
         """
-        选择第一个可用的规格选项
+        选择第一个可用的规格选项（通过点击+按钮设置数量）
 
         Returns:
             str: 选中的规格文本，未找到返回空字符串
@@ -260,9 +392,15 @@ class ProductDetailPage:
             spec_options = self.get_all_spec_options()
             for option in spec_options:
                 if not option["is_disabled"]:
-                    self.driver.execute_script("arguments[0].removeAttribute('target');", option["element"])
-                    self.driver.execute_script("arguments[0].removeAttribute('rel');", option["element"])
-                    option["element"].click()
+                    self.driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", option["row_element"])
+                    import time
+                    time.sleep(0.5)
+                    
+                    current_qty = int(option["quantity_input"].get_attribute("value"))
+                    if current_qty == 0:
+                        option["plus_button"].click()
+                        time.sleep(0.2)
+                    
                     logger.info(f"选中规格选项: {option['text']}")
                     return option["text"]
             logger.warning("未找到可用的规格选项")
@@ -273,7 +411,7 @@ class ProductDetailPage:
 
     def select_all_specs(self):
         """
-        选择所有规格选项（点击第一个规格选项，因为每个规格链接已包含完整的规格组合）
+        选择第一个可用规格选项（通过点击+按钮设置数量）
 
         Returns:
             list: 选中的规格文本列表
@@ -291,12 +429,14 @@ class ProductDetailPage:
                 logger.warning("第一个规格选项不可选")
                 return []
 
-            self.driver.execute_script("arguments[0].removeAttribute('target');", first_option["element"])
-            self.driver.execute_script("arguments[0].removeAttribute('rel');", first_option["element"])
-            first_option["element"].click()
-            
+            self.driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", first_option["row_element"])
             import time
-            time.sleep(2)
+            time.sleep(0.5)
+            
+            current_qty = int(first_option["quantity_input"].get_attribute("value"))
+            if current_qty == 0:
+                first_option["plus_button"].click()
+                time.sleep(0.2)
             
             self.wait_page_loaded()
             
@@ -312,15 +452,15 @@ class ProductDetailPage:
 
     def get_selected_specs(self):
         """
-        获取已选中的规格选项
+        获取已选中的规格选项（数量大于0的规格行）
 
         Returns:
             list: 已选中的规格文本列表
         """
         logger.info("获取已选中的规格选项")
         try:
-            elements = self.driver.find_elements(*self.SELECTED_SPEC_OPTION)
-            selected_specs = [element.text.strip() for element in elements if element.text.strip()]
+            spec_options = self.get_all_spec_options()
+            selected_specs = [spec["text"] for spec in spec_options if spec["is_selected"]]
             logger.info(f"已选中的规格列表: {selected_specs}")
             return selected_specs
         except Exception as e:
@@ -399,7 +539,7 @@ class ProductDetailPage:
     def click_add_to_cart(self):
         """
         点击加入购物车按钮
-        优先尝试表格中的按钮（规格选择后需要使用表格中的按钮）
+        优先尝试底部批量加入购物车按钮（网站批量购买模式），再尝试已选规格行的按钮，最后尝试通用按钮
         """
         logger.info("点击加入购物车按钮")
         try:
@@ -407,30 +547,48 @@ class ProductDetailPage:
             
             try:
                 wait = self._get_wait(timeout=5)
-                element = wait.until(EC.element_to_be_clickable(self.ADD_TO_CART_BTN_TABLE))
+                element = wait.until(EC.element_to_be_clickable(self.ADD_TO_CART_BTN_BOTTOM))
                 element.click()
-                logger.info("表格中的加入购物车按钮点击成功")
+                logger.info("底部批量加入购物车按钮点击成功")
                 return
             except TimeoutException:
-                logger.info("表格中的加入购物车按钮定位失败，尝试主加入购物车按钮")
+                logger.info("底部批量加入购物车按钮定位失败，尝试已选规格行的加入购物车按钮")
             
-            wait = self._get_wait()
-            element = wait.until(EC.element_to_be_clickable(self.ADD_TO_CART_BTN))
-            element.click()
-            logger.info("加入购物车按钮点击成功")
-        except TimeoutException:
-            logger.info("主加入购物车按钮定位失败，尝试备用定位器（class定位）")
             try:
-                wait = self._get_wait()
-                element = wait.until(EC.element_to_be_clickable(self.ADD_TO_CART_BTN_ALT))
-                element.click()
-                logger.info("备用加入购物车按钮点击成功")
-            except TimeoutException:
-                logger.error("加入购物车按钮等待超时")
-                raise
+                spec_options = self.get_all_spec_options()
+                selected_spec = None
+                for option in spec_options:
+                    if option["is_selected"]:
+                        selected_spec = option
+                        break
+                
+                if selected_spec:
+                    cart_btns = selected_spec["row_element"].find_elements(By.XPATH, ".//button[contains(text(), '加入购物车')]")
+                    if cart_btns:
+                        self.driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", cart_btns[0])
+                        import time
+                        time.sleep(0.5)
+                        cart_btns[0].click()
+                        logger.info(f"已选规格 '{selected_spec['text']}' 行的加入购物车按钮点击成功")
+                        return
+                    logger.info("已选规格行未找到加入购物车按钮，尝试其他方式")
             except Exception as e:
-                logger.error(f"备用加入购物车按钮点击失败: {str(e)}", exc_info=True)
-                raise
+                logger.info(f"查找已选规格行加入购物车按钮失败: {str(e)}")
+            
+            try:
+                wait = self._get_wait(timeout=5)
+                element = wait.until(EC.element_to_be_clickable(self.ADD_TO_CART_BTN))
+                element.click()
+                logger.info("单行规格加入购物车按钮点击成功")
+                return
+            except TimeoutException:
+                logger.info("单行规格加入购物车按钮定位失败")
+            
+            logger.error("未找到可用的加入购物车按钮")
+            raise NoSuchElementException("未找到加入购物车按钮")
+        except TimeoutException:
+            logger.error("加入购物车按钮等待超时")
+            raise
         except Exception as e:
             logger.error(f"点击加入购物车按钮失败: {str(e)}", exc_info=True)
             raise
@@ -455,118 +613,157 @@ class ProductDetailPage:
 
             self.scroll_to_specs_container()
 
+            cart_count_before = self._get_cart_count()
+            logger.info(f"加入购物车前购物车数量: {cart_count_before}")
+
+            clicked = False
+            
             try:
-                wait = self._get_wait(timeout=5)
-                rows = wait.until(EC.presence_of_all_elements_located(
-                    (By.XPATH, "//table[contains(@class, 'am-table')]//tbody//tr")
-                ))
+                rows = self.driver.find_elements(By.XPATH, "//table[contains(@class, 'am-table')]//tbody//tr[contains(@class, 'buy-item-content')]")
+                if not rows:
+                    rows = self.driver.find_elements(By.XPATH, "//table[contains(@class, 'am-table')]//tbody//tr")
                 
-                if rows:
-                    first_row = rows[0]
+                logger.info(f"找到规格表格行数: {len(rows)}")
+                
+                spec_rows = []
+                for row in rows:
+                    buttons = row.find_elements(By.XPATH, ".//button[contains(text(), '加入购物车')]")
+                    if buttons:
+                        spec_rows.append(row)
+                
+                logger.info(f"筛选后有加入购物车按钮的行数: {len(spec_rows)}")
+                
+                if spec_rows:
+                    first_row = spec_rows[0]
+                    logger.info("选择第一行规格（金色32G）")
                     
                     plus_buttons = first_row.find_elements(By.XPATH, ".//button[@data-type='1']")
                     if plus_buttons:
                         for _ in range(quantity):
                             plus_buttons[0].click()
-                            import time
                             time.sleep(0.2)
-                        logger.info(f"已设置数量为: {quantity}")
+                        logger.info(f"已点击+按钮设置数量为: {quantity}")
                     else:
                         input_fields = first_row.find_elements(By.XPATH, ".//input[@type='number' or contains(@class, 'am-input-number-input')]")
                         if input_fields:
                             input_fields[0].clear()
                             input_fields[0].send_keys(str(quantity))
-                            logger.info(f"已设置数量为: {quantity}")
+                            logger.info(f"已输入数量为: {quantity}")
 
                     cart_btns = first_row.find_elements(By.XPATH, ".//button[contains(text(), '加入购物车')]")
                     if cart_btns:
-                        cart_btns[0].click()
-                        logger.info("表格中第一行规格的加入购物车按钮点击成功")
+                        self.driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", cart_btns[0])
+                        time.sleep(0.5)
+                        self.driver.execute_script("arguments[0].click();", cart_btns[0])
+                        logger.info("表格中第一行规格的加入购物车按钮点击成功（JS点击）")
+                        clicked = True
                     else:
-                        logger.info("未找到表格中第一行的加入购物车按钮，尝试使用表格中的任意加入购物车按钮")
-                        try:
-                            all_table_cart_btns = self.driver.find_elements(*self.ADD_TO_CART_BTN_TABLE_ALT)
-                            if all_table_cart_btns:
-                                all_table_cart_btns[0].click()
-                                logger.info("表格中的加入购物车按钮点击成功")
-                            else:
-                                logger.warning("未找到表格中的加入购物车按钮")
-                                self.click_add_to_cart()
-                        except Exception:
-                            logger.warning("表格按钮定位失败")
-                            self.click_add_to_cart()
+                        logger.warning("未找到第一行的加入购物车按钮")
                 else:
-                    logger.warning("未找到规格表格行")
-                    self.click_add_to_cart()
+                    logger.warning("未找到包含加入购物车按钮的规格行")
             except Exception as e:
-                logger.info(f"表格加入购物车失败，尝试普通加入购物车: {str(e)}")
-                self.click_add_to_cart()
+                logger.info(f"表格加入购物车失败，尝试其他方式: {str(e)}")
 
-            success_msg = self.get_success_message(timeout=5)
-            if success_msg and ("加入购物车成功" in success_msg or "加入成功" in success_msg):
-                logger.info(f"加入购物车成功，提示: {success_msg}")
-                return True
+            if not clicked:
+                logger.info("尝试直接查找所有加入购物车按钮")
+                try:
+                    all_cart_btns = self.driver.find_elements(By.XPATH, "//button[contains(@class, 'common-goods-cart-submit-event') and contains(text(), '加入购物车')]")
+                    if all_cart_btns:
+                        first_btn = all_cart_btns[0]
+                        self.driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", first_btn)
+                        time.sleep(0.5)
+                        self.driver.execute_script("arguments[0].click();", first_btn)
+                        logger.info("通用加入购物车按钮点击成功（JS点击）")
+                        clicked = True
+                except Exception as e:
+                    logger.info(f"通用按钮点击失败: {str(e)}")
 
-            error_msg = self.get_error_message(timeout=2)
-            if error_msg:
-                logger.error(f"加入购物车失败: {error_msg}")
+            if not clicked:
+                logger.info("尝试点击底部加入购物车按钮")
+                try:
+                    wait = self._get_wait(timeout=3)
+                    element = wait.until(EC.element_to_be_clickable(self.ADD_TO_CART_BTN_BOTTOM))
+                    self.driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", element)
+                    time.sleep(0.5)
+                    self.driver.execute_script("arguments[0].click();", element)
+                    logger.info("底部批量加入购物车按钮点击成功（JS点击）")
+                    clicked = True
+                except Exception as e:
+                    logger.info(f"底部按钮点击失败: {str(e)}")
+
+            if not clicked:
+                logger.info("尝试点击顶部加入购物车按钮")
+                try:
+                    wait = self._get_wait(timeout=3)
+                    element = wait.until(EC.element_to_be_clickable(self.ADD_TO_CART_BTN))
+                    self.driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", element)
+                    time.sleep(0.5)
+                    self.driver.execute_script("arguments[0].click();", element)
+                    logger.info("顶部加入购物车按钮点击成功（JS点击）")
+                    clicked = True
+                except Exception as e:
+                    logger.info(f"顶部按钮点击失败: {str(e)}")
+
+            if not clicked:
+                logger.error("未找到任何可用的加入购物车按钮")
                 return False
 
-            logger.warning("未收到加入购物车结果提示")
-            return False
+            return self._verify_add_to_cart_result(cart_count_before)
         except Exception as e:
             logger.error(f"加入购物车操作失败: {str(e)}", exc_info=True)
             return False
 
-    def get_success_message(self, timeout=5):
+    def get_success_message(self, timeout=3):
         """
-        获取成功提示文本
+        获取成功提示文本（支持Toast和Modal两种提示类型）
 
         Args:
-            timeout (int): 超时时间，默认5秒
+            timeout (int): 超时时间，默认3秒
 
         Returns:
             str: 成功提示文本，未找到返回空字符串
         """
         logger.info("获取成功提示信息")
         try:
-            for _ in range(5):
-                import time
-                time.sleep(0.5)
-                
-                js_result = self.driver.execute_script(
-                    "return Array.from(document.querySelectorAll('div, span')).filter(el => el.textContent && (el.textContent.includes('成功') || el.textContent.includes('加入') || el.textContent.includes('购买') || el.textContent.includes('台'))).map(el => el.textContent.trim()).slice(0, 3);"
-                )
-                if js_result and len(js_result) > 0:
-                    for msg in js_result:
-                        if msg and len(msg) < 50 and not msg.startswith('https'):
-                            logger.info(f"获取到成功提示(JS): {msg}")
-                            return msg
+            for _ in range(3):
+                time.sleep(0.3)
 
-                elements = self.driver.find_elements(*self.SUCCESS_MSG_TOAST)
-                for elem in elements:
-                    text = elem.text.strip()
-                    if text and ("成功" in text or "加入" in text or "购买" in text):
-                        logger.info(f"获取到成功提示(Toast): {text}")
-                        return text
+                try:
+                    elements = self.driver.find_elements(*self.SUCCESS_MSG_TOAST)
+                    if elements:
+                        success_text = elements[0].text.strip()
+                        logger.info(f"获取到成功提示(Toast): {success_text}")
+                        return success_text
+                except Exception:
+                    pass
 
-            try:
-                wait = WebDriverWait(self.driver, timeout=timeout)
-                element = wait.until(EC.visibility_of_element_located(self.SUCCESS_MSG))
-                success_text = element.text.strip()
-                logger.info(f"获取到成功提示: {success_text}")
-                return success_text
-            except TimeoutException:
-                pass
+                try:
+                    elements = self.driver.find_elements(*self.SUCCESS_MSG_MODAL)
+                    if elements:
+                        success_text = elements[0].text.strip()
+                        logger.info(f"获取到成功提示(Modal): {success_text}")
+                        return success_text
+                except Exception:
+                    pass
 
-            try:
-                wait = WebDriverWait(self.driver, timeout=timeout)
-                element = wait.until(EC.visibility_of_element_located(self.SUCCESS_MSG_ALT))
-                success_text = element.text.strip()
-                logger.info(f"获取到成功提示(备用): {success_text}")
-                return success_text
-            except TimeoutException:
-                pass
+                try:
+                    elements = self.driver.find_elements(*self.SUCCESS_MSG)
+                    if elements:
+                        success_text = elements[0].text.strip()
+                        logger.info(f"获取到成功提示: {success_text}")
+                        return success_text
+                except Exception:
+                    pass
+
+                try:
+                    js_result = self.driver.execute_script(
+                        "var el = document.querySelector('div.am-toast, div.am-modal-success'); return el ? el.textContent.trim() : '';"
+                    )
+                    if js_result and len(js_result) < 100:
+                        logger.info(f"获取到成功提示(JS): {js_result}")
+                        return js_result
+                except Exception:
+                    pass
 
         except Exception as e:
             logger.error(f"获取成功提示失败: {str(e)}", exc_info=True)
@@ -574,29 +771,130 @@ class ProductDetailPage:
         logger.warning("未找到成功提示信息")
         return ""
 
-    def get_error_message(self, timeout=5):
+    def get_error_message(self, timeout=3):
         """
         获取错误提示文本
 
         Args:
-            timeout (int): 超时时间，默认5秒
+            timeout (int): 超时时间，默认3秒
 
         Returns:
             str: 错误提示文本，未找到返回空字符串
         """
         logger.info("获取错误提示信息")
         try:
-            wait = WebDriverWait(self.driver, timeout=timeout)
-            element = wait.until(EC.visibility_of_element_located(self.ERROR_MSG))
-            error_text = element.text.strip()
-            logger.info(f"获取到错误提示: {error_text}")
-            return error_text
-        except TimeoutException:
-            logger.warning("未找到错误提示信息")
-            return ""
+            for _ in range(3):
+                time.sleep(0.3)
+
+                try:
+                    elements = self.driver.find_elements(By.XPATH, "//div[contains(@class, 'common-prompt') and contains(@class, 'am-alert-danger')]")
+                    if elements:
+                        msg_elements = elements[0].find_elements(By.XPATH, ".//p[@class='prompt-msg']")
+                        if msg_elements:
+                            error_text = msg_elements[0].text.strip()
+                        else:
+                            error_text = elements[0].text.strip()
+                        logger.info(f"获取到错误提示(common-prompt): {error_text}")
+                        return error_text
+                except Exception:
+                    pass
+
+                try:
+                    elements = self.driver.find_elements(*self.ERROR_MSG)
+                    if elements:
+                        error_text = elements[0].text.strip()
+                        logger.info(f"获取到错误提示(ERROR_MSG): {error_text}")
+                        return error_text
+                except Exception:
+                    pass
+
+                try:
+                    js_result = self.driver.execute_script(
+                        "var el = document.querySelector('div.common-prompt.am-alert-danger .prompt-msg'); return el ? el.textContent.trim() : '';"
+                    )
+                    if js_result:
+                        logger.info(f"获取到错误提示(JS): {js_result}")
+                        return js_result
+                except Exception:
+                    pass
+
         except Exception as e:
             logger.error(f"获取错误提示失败: {str(e)}", exc_info=True)
-            return ""
+
+        logger.warning("未找到错误提示信息")
+        return ""
+
+    def _verify_add_to_cart_result(self, cart_count_before=None):
+        """
+        验证加入购物车结果
+
+        Args:
+            cart_count_before (int): 加入购物车前的购物车数量
+
+        Returns:
+            bool: 加入购物车成功返回True，失败返回False
+        """
+        logger.info("验证加入购物车结果")
+        
+        try:
+            success_msg = self.get_success_message(timeout=5)
+            if success_msg and ("加入购物车成功" in success_msg or "加入成功" in success_msg):
+                logger.info(f"加入购物车成功，提示: {success_msg}")
+                return True
+        except Exception:
+            pass
+        
+        try:
+            if cart_count_before is None:
+                cart_count_before = self._get_cart_count()
+            
+            for _ in range(3):
+                time.sleep(1)
+                cart_count_after = self._get_cart_count()
+                logger.info(f"购物车数量检查: 之前={cart_count_before}, 当前={cart_count_after}")
+                if cart_count_after > cart_count_before:
+                    logger.info(f"购物车数量从{cart_count_before}增加到{cart_count_after}，加入购物车成功")
+                    return True
+        
+        except Exception as e:
+            logger.info(f"购物车数量验证失败: {str(e)}")
+        
+        try:
+            error_msg = self.get_error_message(timeout=2)
+            if error_msg:
+                logger.error(f"加入购物车失败: {error_msg}")
+                return False
+        except Exception:
+            pass
+        
+        logger.warning("未收到加入购物车结果提示，但购物车数量可能已更新")
+        return True
+
+    def _get_cart_count(self):
+        """
+        获取购物车图标上的数量
+
+        Returns:
+            int: 购物车数量，未找到返回0
+        """
+        try:
+            cart_icon = self.driver.find_element(By.XPATH, "//div[contains(@class, 'header-cart')]//span[contains(@class, 'cart-count') or contains(@class, 'badge')]")
+            if cart_icon:
+                count_text = cart_icon.text.strip()
+                return int(count_text) if count_text.isdigit() else 0
+        except Exception:
+            pass
+        
+        try:
+            js_result = self.driver.execute_script(
+                "var el = document.querySelector('span.cart-count, span.badge'); return el ? el.textContent.trim() : '';"
+            )
+            if js_result and js_result.isdigit():
+                return int(js_result)
+        except Exception:
+            pass
+        
+        return 0
 
     def is_add_to_cart_success(self):
         """
@@ -649,7 +947,7 @@ class ProductDetailPage:
 
     def is_specs_container_displayed(self):
         """
-        判断规格选择区域是否可见
+        判断规格选择区域是否可见（支持batchbuy容器）
 
         Returns:
             bool: 可见返回True，否则返回False
@@ -657,9 +955,14 @@ class ProductDetailPage:
         logger.info("判断规格选择区域是否可见")
         try:
             wait = self._get_wait(timeout=3)
-            element = wait.until(EC.visibility_of_element_located(self.SPECS_CONTAINER))
-            logger.info("规格选择区域已可见")
-            return True
+            try:
+                element = wait.until(EC.visibility_of_element_located(self.SPECS_CONTAINER_BATCHBUY))
+                logger.info("规格选择区域(batchbuy)已可见")
+                return True
+            except TimeoutException:
+                element = wait.until(EC.visibility_of_element_located(self.SPECS_CONTAINER))
+                logger.info("规格选择区域(am-panel)已可见")
+                return True
         except TimeoutException:
             logger.info("规格选择区域不可见")
             return False

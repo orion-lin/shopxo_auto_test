@@ -35,6 +35,8 @@ class LoginPage:
     CART_BTN = (By.XPATH, "//a[contains(@class, 'search-right-cart-submit') and contains(@href, 'cart')]")
     # 错误提示框关闭按钮
     ERROR_CLOSE_BTN = (By.XPATH, "//div[contains(@class, 'common-prompt')]//button[@class='am-close']")
+    # 首页登录链接按钮 - 通过文本和href定位
+    HOME_LOGIN_LINK = (By.XPATH, "//a[contains(@href, 'login.html') and text()='登录']")
 
     def __init__(self, web_driver):
         """
@@ -198,6 +200,23 @@ class LoginPage:
             raise
         except Exception as e:
             logger.error(f"点击购物车按钮失败: {str(e)}", exc_info=True)
+            raise
+
+    def click_home_login_link(self):
+        """
+        点击首页的登录链接按钮，跳转到登录页面
+        """
+        logger.info("点击首页登录链接按钮")
+        try:
+            wait = self._get_wait()
+            element = wait.until(EC.element_to_be_clickable(self.HOME_LOGIN_LINK))
+            element.click()
+            logger.info("已点击首页登录链接，等待跳转到登录页面")
+        except TimeoutException:
+            logger.error("首页登录链接等待超时")
+            raise
+        except Exception as e:
+            logger.error(f"点击首页登录链接失败: {str(e)}", exc_info=True)
             raise
 
     def refresh_captcha(self):
@@ -536,7 +555,9 @@ class LoginPage:
 
     def login(self, username, password):
         """
-        完整登录流程（带验证码识别）- 符合分步验证逻辑
+        完整登录流程（带验证码识别）- 通过首页点击登录按钮的方式登录
+
+        流程：首页 -> 点击登录按钮 -> 登录页 -> 输入账号密码验证码 -> 点击登录 -> 跳转首页
 
         Args:
             username (str): 用户名
@@ -546,25 +567,30 @@ class LoginPage:
             bool: 登录成功返回True，失败返回False
         """
         logger.info(f"执行登录操作：用户名={username}")
-        self.open_login_page()
-        self.reset_login_page()
 
-        logger.info("=== 第一步：输入账号，点击登录 ===")
+        logger.info("=== 打开首页 ===")
+        self.open_home_page()
+
+        logger.info("=== 点击首页登录按钮跳转登录页 ===")
+        self.click_home_login_link()
+
+        logger.info("=== 清空输入框 ===")
+        self.clear_all_inputs()
+
+        logger.info("=== 输入用户名 ===")
         self.input_username(username)
-        self.click_login()
 
-        if not self.is_password_input_visible():
-            logger.error("第一步失败：密码输入框未出现")
-            return False
+        logger.info("=== 输入密码 ===")
+        self.input_password(password)
 
-        logger.info("=== 第二步：输入密码和验证码，点击登录 ===")
+        logger.info("=== 识别并输入验证码 ===")
         captcha = self.recognize_captcha()
         if not captcha:
             logger.error("验证码识别失败，登录流程终止")
             return False
-
-        self.input_password(password)
         self.input_captcha(captcha)
+
+        logger.info("=== 点击登录按钮 ===")
         self.click_login()
 
         error_msg = self.get_error_message(timeout=3)
@@ -576,4 +602,8 @@ class LoginPage:
                     self.input_captcha(captcha)
                     self.click_login()
 
-        return self.is_login_success()
+        if self.is_login_success():
+            logger.info("登录成功，等待自动跳转首页")
+            return True
+
+        return False

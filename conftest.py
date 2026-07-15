@@ -124,6 +124,47 @@ def login_token(api_client):
     logger.info("========== 登录Token会话结束 ==========")
 
 
+@pytest.fixture(scope="class")
+def login(web_driver):
+    """
+    UI登录fixture（class级别）
+    复用登录模块的login()方法完成登录操作
+    商品详情模块所有用例共享同一登录态
+
+    Args:
+        web_driver: WebDriverBase实例
+
+    Returns:
+        bool: 登录成功返回True，失败返回False
+    """
+    logger.info("========== 执行UI登录操作 ==========")
+
+    from page.login_page import LoginPage
+    from utils.yaml_util import YamlUtil
+
+    login_page = LoginPage(web_driver)
+
+    try:
+        login_data = YamlUtil.read_test_data("ui_data.yaml")["login"]["normal"]
+        username = login_data["username"]
+        password = login_data["password"]
+
+        logger.info(f"调用登录模块login()方法，用户名: {username}")
+        login_success = login_page.login(username, password)
+
+        if login_success:
+            logger.info("UI登录成功")
+        else:
+            logger.error("UI登录失败")
+            pytest.skip("Login failed, skip all test cases in this class")
+
+        yield login_success
+
+    except Exception as e:
+        logger.error(f"UI登录异常: {str(e)}", exc_info=True)
+        pytest.skip(f"Login exception: {str(e)}")
+
+
 @pytest.fixture(autouse=True)
 def test_case_logging(request):
     """
