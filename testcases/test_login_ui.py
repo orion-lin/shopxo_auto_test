@@ -1,4 +1,6 @@
 import pytest
+import time
+from selenium.webdriver.common.by import By
 from page.login_page import LoginPage
 from utils.yaml_util import YamlUtil
 from base.AssertUtil import AssertUtil
@@ -286,19 +288,40 @@ class TestLoginUI:
 
     def test_TC_LOGIN_008(self, web_driver):
         """
-        场景8：未登录状态访问需授权页面，验证跳转逻辑
+        场景8：未登录状态访问需授权页面，验证登录弹窗出现
 
         操作步骤：
             1. 打开商城首页，直接点击购物车按钮；
 
         预期结果：
-            1. 页面自动跳转至登录页面；
+            1. 页面弹出登录弹窗（am-popup-inner）；
+            2. 弹窗中包含登录iframe；
         """
         login_page = LoginPage(web_driver)
         login_page.open_home_page()
         login_page.click_cart_btn()
 
+        time.sleep(3)
+        
+        popup_inner = web_driver.find_elements((By.XPATH, "//div[@class='am-popup-inner am-radius']"))
+        logger.info(f"找到的弹窗容器: {len(popup_inner)}")
+        
+        login_iframe = web_driver.find_elements((By.XPATH, "//div[@class='am-popup-inner am-radius']//iframe[contains(@src, 'modallogininfo')]"))
+        logger.info(f"找到的登录iframe: {len(login_iframe)}")
+        
+        close_button = web_driver.find_elements((By.XPATH, "//div[@class='am-popup-inner am-radius']//span[@data-am-modal-close and contains(@class, 'am-close')]"))
+        logger.info(f"找到的关闭按钮: {len(close_button)}")
+        
         AssertUtil.assert_true(
-            login_page.is_redirect_to_login(),
-            message="未跳转到登录页面：未登录访问购物车失败"
+            len(popup_inner) > 0,
+            message="未出现登录弹窗容器（am-popup-inner）"
         )
+        AssertUtil.assert_true(
+            len(login_iframe) > 0,
+            message="登录弹窗中未包含登录iframe"
+        )
+        AssertUtil.assert_true(
+            len(close_button) > 0,
+            message="登录弹窗中未包含关闭按钮"
+        )
+        logger.info("登录弹窗已出现，包含弹窗容器、登录iframe和关闭按钮")

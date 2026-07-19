@@ -1,3 +1,4 @@
+import time
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -29,14 +30,14 @@ class LoginPage:
     ERROR_MSG = (By.XPATH, "//div[contains(@class, 'common-prompt') and contains(@class, 'am-alert-danger')]//p[@class='prompt-msg']")
     # 成功提示框 - 通过class组合定位
     SUCCESS_MSG = (By.XPATH, "//div[contains(@class, 'common-prompt') and contains(@class, 'am-alert-success')]//p[@class='prompt-msg']")
-    # 用户头像元素 - 登录成功后右上角显示用户头像的元素
-    USER_AVATAR = (By.XPATH, "//div[contains(@class, 'base-nav') and contains(@class, 'user-center')]//img[@class='user-avatar']")
-    # 首页购物车按钮 - 通过class和href组合定位
-    CART_BTN = (By.XPATH, "//a[contains(@class, 'search-right-cart-submit') and contains(@href, 'cart')]")
+    # 用户头像元素 - 登录成功后右上角显示用户头像的元素（支持多种定位方式）
+    USER_AVATAR = (By.XPATH, "//div[contains(@class, 'm-baseinfo')]//img[@class='user-avatar']")
+    # 首页购物车按钮 - 通过文本和href组合定位
+    CART_BTN = (By.XPATH, "//a[contains(text(), '购物车') or contains(@href, 'cart')]")
     # 错误提示框关闭按钮
     ERROR_CLOSE_BTN = (By.XPATH, "//div[contains(@class, 'common-prompt')]//button[@class='am-close']")
-    # 首页登录链接按钮 - 通过文本和href定位
-    HOME_LOGIN_LINK = (By.XPATH, "//a[contains(@href, 'login.html') and text()='登录']")
+    # 首页登录链接按钮 - 通过文本和href定位（支持多种定位方式）
+    HOME_LOGIN_LINK = (By.XPATH, "//a[contains(@href, 'login') and contains(text(), '登录')]")
 
     def __init__(self, web_driver):
         """
@@ -76,7 +77,7 @@ class LoginPage:
         打开登录页面
         """
         base_url = self.env_config.get("base_url", "")
-        login_url = f"{base_url}/login.html"
+        login_url = f"{base_url}/?s=user/loginInfo.html"
         logger.info(f"打开登录页面: {login_url}")
         self.driver.get(login_url)
 
@@ -189,14 +190,34 @@ class LoginPage:
     def click_cart_btn(self):
         """
         点击首页购物车按钮
+        未登录状态下点击会弹出登录弹窗，而不是跳转登录页
         """
         logger.info("点击首页购物车按钮")
         try:
-            wait = self._get_wait()
-            element = wait.until(EC.element_to_be_clickable(self.CART_BTN))
-            element.click()
-        except TimeoutException:
-            logger.error("购物车按钮等待超时")
+            time.sleep(2)
+            
+            cart_selectors = [
+                (By.XPATH, "//div[@class='menu-hd login-event']//a[contains(text(), '购物车')]"),
+                (By.XPATH, "//div[contains(@class, 'menu-hd') and contains(@class, 'login-event')]//a"),
+                (By.XPATH, "//a[contains(text(), '购物车') and @href='javascript:;']"),
+            ]
+            
+            for by, selector in cart_selectors:
+                try:
+                    elements = self.driver.find_elements(by, selector)
+                    if elements:
+                        element = elements[0]
+                        self.driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", element)
+                        time.sleep(0.5)
+                        self.driver.execute_script("arguments[0].click();", element)
+                        logger.info(f"购物车按钮点击成功，定位器: {selector}")
+                        return
+                except Exception:
+                    logger.info(f"定位器 {selector} 未找到元素")
+            
+            logger.error("未找到购物车按钮")
+            raise NoSuchElementException("未找到购物车按钮")
+        except NoSuchElementException:
             raise
         except Exception as e:
             logger.error(f"点击购物车按钮失败: {str(e)}", exc_info=True)
@@ -205,15 +226,36 @@ class LoginPage:
     def click_home_login_link(self):
         """
         点击首页的登录链接按钮，跳转到登录页面
+        支持多重定位器容错：优先使用主定位器，失败后尝试备用定位器
         """
         logger.info("点击首页登录链接按钮")
         try:
-            wait = self._get_wait()
-            element = wait.until(EC.element_to_be_clickable(self.HOME_LOGIN_LINK))
-            element.click()
-            logger.info("已点击首页登录链接，等待跳转到登录页面")
-        except TimeoutException:
-            logger.error("首页登录链接等待超时")
+            login_selectors = [
+                self.HOME_LOGIN_LINK,
+                (By.XPATH, "//div[@class='member-login']//a[@class='am-btn-primary']"),
+                (By.XPATH, "//a[@href='?s=user/loginInfo.html']"),
+                (By.XPATH, "//a[contains(@href, 'loginInfo')]"),
+                (By.XPATH, "//a[contains(@class, 'am-btn-primary') and contains(text(), '登录')]"),
+            ]
+
+            for by, selector in login_selectors:
+                try:
+                    wait = self._get_wait(timeout=3)
+                    element = wait.until(EC.element_to_be_clickable((by, selector)))
+                    self.driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", element)
+                    time.sleep(0.5)
+                    element.click()
+                    logger.info(f"首页登录链接点击成功，定位器: {selector}")
+                    logger.info("已点击首页登录链接，等待跳转到登录页面")
+                    return
+                except TimeoutException:
+                    logger.info(f"定位器 {selector} 未找到元素，尝试下一个")
+                    continue
+
+            logger.error("所有定位器均未找到首页登录链接")
+            raise NoSuchElementException("未找到首页登录链接")
+
+        except NoSuchElementException:
             raise
         except Exception as e:
             logger.error(f"点击首页登录链接失败: {str(e)}", exc_info=True)
@@ -330,22 +372,40 @@ class LoginPage:
             logger.error(f"获取成功提示失败: {str(e)}", exc_info=True)
             return ""
 
-    def is_avatar_displayed(self):
+    def is_avatar_displayed(self, timeout=2):
         """
         判断用户头像是否显示
+        支持多重定位器容错：优先使用主定位器，失败后尝试备用定位器
+        使用较短的超时时间，避免长时间等待
+
+        Args:
+            timeout (int): 每个定位器的超时时间，默认2秒
 
         Returns:
             bool: 用户头像显示返回True，否则返回False
         """
         logger.info("判断用户头像是否显示")
         try:
-            wait = self._get_wait()
-            element = wait.until(EC.visibility_of_element_located(self.USER_AVATAR))
-            logger.info("用户头像已显示")
-            return True
-        except TimeoutException:
-            logger.warning("用户头像未显示")
+            avatar_selectors = [
+                self.USER_AVATAR,
+                (By.XPATH, "//img[@class='user-avatar']"),
+                (By.XPATH, "//div[@class='m-baseinfo']//img"),
+                (By.XPATH, "//a[@href='javascript:;']//img[@class='user-avatar']"),
+                (By.XPATH, "//img[contains(@src, 'default-user-avatar')]"),
+            ]
+
+            for by, selector in avatar_selectors:
+                try:
+                    wait = self._get_wait(timeout=timeout)
+                    element = wait.until(EC.visibility_of_element_located((by, selector)))
+                    logger.info(f"用户头像已显示，定位器: {selector}")
+                    return True
+                except TimeoutException:
+                    continue
+
+            logger.warning("所有定位器均未找到用户头像")
             return False
+
         except Exception as e:
             logger.error(f"判断用户头像状态失败: {str(e)}", exc_info=True)
             return False
@@ -353,6 +413,7 @@ class LoginPage:
     def is_login_success(self):
         """
         判断登录是否成功
+        优先通过URL判断，避免长时间等待
 
         Returns:
             bool: 登录成功返回True，失败返回False
@@ -366,13 +427,20 @@ class LoginPage:
                 logger.info("登录成功：页面已跳转")
                 return True
 
-            if self.get_success_message() == "登录成功":
-                logger.info("登录成功：页面显示登录成功提示")
-                return True
+            try:
+                success_msg = self.get_success_message(timeout=2)
+                if success_msg and "登录成功" in success_msg:
+                    logger.info("登录成功：页面显示登录成功提示")
+                    return True
+            except Exception:
+                pass
 
-            if self.is_avatar_displayed():
-                logger.info("登录成功：用户头像已显示")
-                return True
+            try:
+                if self.is_avatar_displayed(timeout=1):
+                    logger.info("登录成功：用户头像已显示")
+                    return True
+            except Exception:
+                pass
 
             logger.info("登录失败：仍在登录页面")
             return False
@@ -392,7 +460,7 @@ class LoginPage:
             current_url = self.driver.current_url
             logger.info(f"当前URL: {current_url}")
 
-            if "/login.html" in current_url:
+            if "/login.html" in current_url or "logininfo" in current_url:
                 logger.info("已跳转到登录页面")
                 return True
 

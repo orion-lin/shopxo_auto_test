@@ -1,7 +1,7 @@
 #UI页面测试数据
 # 搜索模块
 search:
-  search_keyword: "手机"
+  search_keyword: "电脑"
   no_match_keyword: "水果"
   expected_min_results: 1
   success_message: "加入购物车成功"

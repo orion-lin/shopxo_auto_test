@@ -29,3 +29,11 @@ unauthorized:
 # 购物车接口
 cart_list:
   path: "/cart/stock.html"
+cart_add:
+  path: "/cart/save"
+cart_update:
+  path: "/cart/update"
+cart_delete:
+  path: "/cart/delete"
+cart_clear:
+  path: "/cart/clear"
