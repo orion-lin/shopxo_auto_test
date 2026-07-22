@@ -52,13 +52,13 @@ allure serve report/allure_raw
 ```
 shopxo_auto_test/
 ├── conf/              # 配置文件
-├── base/              # 基础封装（无业务逻辑）
-├── utils/             # 通用工具类（无业务逻辑）
-├── data/              # 测试数据（留白）
-├── testcases/         # 测试用例（留白）
+├── base/              # 基础封装
+├── utils/             # 通用工具类
+├── data/              # 测试数据
+├── testcases/         # 测试用例
 ├── report/            # 测试报告
 ├── logs/              # 日志文件
-├── page/              # 页面类（留白）
+├── page/              # 页面类
 ├── conftest.py        # 全局夹具
 ├── pytest.ini         # pytest配置
 └── requirements.txt   # 依赖清单
@@ -72,3 +72,14 @@ shopxo_auto_test/
 - **data层**：测试数据占位，需手动补充业务测试数据
 - **page层**：页面类占位，需手动编写业务页面封装
 - **testcases层**：测试用例占位，需手动编写业务测试用例
+### 站点访问地址
+1. 本地访问（宝塔一键部署环境）
+地址：`https://shopxo.local/`
+
+2. 外网穿透访问（Cloudflare 代理）
+地址：`https://shop.linorion.xyz/`
+
+**注意事项：**
+- Cloudflare 代理外网访问稳定性较差；
+- 外网访问需保证本地主机持续开机运行。
+

@@ -1,32 +1,48 @@
-api_host: "https://d2.shopxo.vip"
-# 登录接口
+api_host: "http://shopxo.local"
 login_api:
   path: "/user/login"
-  username: "qqqqqq"
-  password: "qqqqqq"
+  type: "username"
+  accounts: "qqqqqq"
+  pwd: "qqqqqq"
   success_msg: "登录成功"
-# 登录错误场景
+verify_api:
+  path: "/api/user/verify"
 login_errors:
   empty_user:
-    username: ""
-    password: "qqqqqq"
-    expected_code: 400
-    expected_msg: "请输入登录账号"
+    type: "username"
+    accounts: ""
+    pwd: "qqqqqq"
+    expected_code: -1
+    expected_msg: "账号不能为空"
   empty_pwd:
-    username: "qqqqqq"
-    password: ""
-    expected_code: 400
-    expected_msg: "密码格式6~18个字符之间"
+    type: "username"
+    accounts: "qqqqqq"
+    pwd: ""
+    expected_code: -1
+    expected_msg: "登录密码格式6~18个字符之间"
   wrong_pwd:
-    username: "qqqqqq"
-    password: "123456"
-    expected_code: 400
+    type: "username"
+    accounts: "qqqqqq"
+    pwd: "123456"
+    expected_code: -1
     expected_msg: "账号或密码不正确"
-# 未授权访问
+  empty_captcha:
+    type: "username"
+    accounts: "qqqqqq"
+    pwd: "qqqqqq"
+    verify: ""
+    expected_code: -10
+    expected_msg: "图片验证码不能为空"
+  wrong_captcha:
+    type: "username"
+    accounts: "qqqqqq"
+    pwd: "qqqqqq"
+    verify: "9999"
+    expected_code: -11
+    expected_msg: "验证码已过期"
 unauthorized:
   expected_code: 400
   expected_msg: "未授权，请先登录"
-# 购物车接口
 cart_list:
   path: "/cart/stock.html"
 cart_add:

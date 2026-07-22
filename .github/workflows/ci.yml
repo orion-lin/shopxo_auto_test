@@ -1,0 +1,26 @@
+name: ShopXO Auto Test CI
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v4
+      - name: 配置Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: 安装依赖
+        run: pip install -r requirements.txt
+      - name: 安装Chrome浏览器
+        run: sudo apt-get install chromium-chromedriver
+      - name: 执行自动化测试
+        run: pytest run_test.py --html=report.html
+      - name: 上传测试报告
+        uses: actions/upload-artifact@v4
+        with:
+          path: report.html

@@ -146,8 +146,8 @@ class ApiRequest:
 
         Args:
             endpoint (str): API接口路径或完整URL
-            data (dict): 表单数据（可选）
-            json (dict): JSON数据（可选）
+            data (dict): 表单数据（可选），使用application/x-www-form-urlencoded格式
+            json (dict): JSON数据（可选），使用application/json格式
             headers (dict): 请求头（可选），会覆盖默认请求头
             **kwargs: 其他requests参数
 
@@ -161,6 +161,12 @@ class ApiRequest:
             request_headers = self.default_headers.copy()
             if headers:
                 request_headers.update(headers)
+
+            # 根据请求数据类型自动设置Content-Type
+            if data is not None and json is None:
+                request_headers["Content-Type"] = "application/x-www-form-urlencoded;charset=UTF-8"
+            elif json is not None and data is None:
+                request_headers["Content-Type"] = "application/json;charset=UTF-8"
 
             # 记录请求日志
             logger.log_request(method="POST", url=url, data=data or json, headers=request_headers)

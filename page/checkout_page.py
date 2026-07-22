@@ -73,24 +73,37 @@ class CheckoutPage:
     ORDER_TIME = (By.XPATH, "//div[@class='order-info']//span[contains(text(), '下单时间')]/following-sibling::span")
 
     # 支付方式区域
-    # 支付方式容器（实际为ul标签）
-    PAYMENT_CONTAINER = (By.XPATH, "//ul[@class='payment-list']")
-    PAYMENT_CONTAINER_ALT = (By.XPATH, "//ul[contains(@class, 'payment-list')]")
-    # 支付方式选项列表（实际为li标签）
-    PAYMENT_OPTIONS = (By.XPATH, "//ul[@class='payment-list']//li")
-    PAYMENT_OPTIONS_ALT = (By.XPATH, "//ul[contains(@class, 'payment-list')]//li")
+    # 支付方式容器（实际为div标签，business-item结构）
+    PAYMENT_CONTAINER = (By.XPATH, "//div[@class='business-item']")
+    PAYMENT_CONTAINER_ALT = (By.XPATH, "//div[contains(@class, 'business-item')]")
+    PAYMENT_CONTAINER_ALT2 = (By.XPATH, "//ul[@class='payment-list']")
+    PAYMENT_CONTAINER_ALT3 = (By.XPATH, "//ul[contains(@class, 'payment-list')]")
+    # 支付方式选项列表（实际为div标签，business-item结构）
+    PAYMENT_OPTIONS = (By.XPATH, "//div[@class='business-item']")
+    PAYMENT_OPTIONS_ALT = (By.XPATH, "//div[contains(@class, 'business-item')]")
+    PAYMENT_OPTIONS_ALT2 = (By.XPATH, "//ul[@class='payment-list']//li")
+    PAYMENT_OPTIONS_ALT3 = (By.XPATH, "//ul[contains(@class, 'payment-list')]//li")
     # 微信支付选项
-    PAYMENT_WECHAT = (By.XPATH, "//ul[@class='payment-list']//li[contains(text(), '微信')]")
-    PAYMENT_WECHAT_ALT = (By.XPATH, "//ul[contains(@class, 'payment-list')]//li[contains(text(), '微信')]")
+    PAYMENT_WECHAT = (By.XPATH, "//div[@class='business-item'][contains(span, '微信')]")
+    PAYMENT_WECHAT_ALT = (By.XPATH, "//div[contains(@class, 'business-item')][contains(span, '微信')]")
+    PAYMENT_WECHAT_ALT2 = (By.XPATH, "//ul[@class='payment-list']//li[contains(text(), '微信')]")
     # 支付宝支付选项
-    PAYMENT_ALIPAY = (By.XPATH, "//ul[@class='payment-list']//li[contains(text(), '支付宝')]")
-    PAYMENT_ALIPAY_ALT = (By.XPATH, "//ul[contains(@class, 'payment-list')]//li[contains(text(), '支付宝')]")
+    PAYMENT_ALIPAY = (By.XPATH, "//div[@class='business-item'][contains(span, '支付宝')]")
+    PAYMENT_ALIPAY_ALT = (By.XPATH, "//div[contains(@class, 'business-item')][contains(span, '支付宝')]")
+    PAYMENT_ALIPAY_ALT2 = (By.XPATH, "//ul[@class='payment-list']//li[contains(text(), '支付宝')]")
+    # 现金支付选项
+    PAYMENT_CASH = (By.XPATH, "//div[@class='business-item'][contains(span, '现金')]")
+    PAYMENT_CASH_ALT = (By.XPATH, "//div[contains(@class, 'business-item')][contains(span, '现金')]")
+    PAYMENT_CASH_ALT2 = (By.XPATH, "//ul[@class='payment-list']//li[contains(text(), '现金')]")
     # 银行卡支付选项
-    PAYMENT_BANK = (By.XPATH, "//ul[@class='payment-list']//li[contains(text(), '银行卡')]")
-    PAYMENT_BANK_ALT = (By.XPATH, "//ul[contains(@class, 'payment-list')]//li[contains(text(), '银行卡')]")
-    # 默认选中的支付方式（实际通过li的class判断）
-    SELECTED_PAYMENT = (By.XPATH, "//ul[@class='payment-list']//li[contains(@class, 'am-active')]")
-    SELECTED_PAYMENT_ALT = (By.XPATH, "//ul[contains(@class, 'payment-list')]//li[contains(@class, 'am-active')]")
+    PAYMENT_BANK = (By.XPATH, "//div[@class='business-item'][contains(span, '银行卡')]")
+    PAYMENT_BANK_ALT = (By.XPATH, "//div[contains(@class, 'business-item')][contains(span, '银行卡')]")
+    PAYMENT_BANK_ALT2 = (By.XPATH, "//ul[@class='payment-list']//li[contains(text(), '银行卡')]")
+    # 默认选中的支付方式（实际通过icon-subscript图标判断）
+    SELECTED_PAYMENT = (By.XPATH, "//div[@class='business-item' and .//i[@class='iconfont icon-subscript']]")
+    SELECTED_PAYMENT_ALT = (By.XPATH, "//div[contains(@class, 'business-item') and .//i[@class='iconfont icon-subscript']]")
+    SELECTED_PAYMENT_ALT2 = (By.XPATH, "//ul[@class='payment-list']//li[contains(@class, 'am-active')]")
+    SELECTED_PAYMENT_ALT3 = (By.XPATH, "//ul[contains(@class, 'payment-list')]//li[contains(@class, 'am-active')]")
 
     # 金额信息
     # 商品总金额
@@ -143,7 +156,10 @@ class CheckoutPage:
         Returns:
             WebDriverWait: 显式等待对象
         """
-        wait_time = timeout or self.browser_config.get("explicit_wait", 15)
+        if timeout is not None:
+            wait_time = timeout
+        else:
+            wait_time = self.browser_config.get("explicit_wait", 15)
         poll_frequency = self.browser_config.get("poll_frequency", 500) / 1000
 
         self._wait = WebDriverWait(
@@ -454,11 +470,46 @@ class CheckoutPage:
         """
         logger.info("获取当前选中的支付方式")
         try:
+            js_script = """
+                var businessItems = document.querySelectorAll('div.business-item');
+                if (businessItems.length > 0) {
+                    for (var i = 0; i < businessItems.length; i++) {
+                        var item = businessItems[i];
+                        var icon = item.querySelector('i.iconfont');
+                        if (icon) {
+                            var iconStyle = window.getComputedStyle(icon);
+                            if (iconStyle.display === 'block') {
+                                var span = item.querySelector('span');
+                                return span ? span.textContent.trim() : '';
+                            }
+                        }
+                    }
+                    for (var j = 0; j < businessItems.length; j++) {
+                        var item = businessItems[j];
+                        var style = window.getComputedStyle(item);
+                        if (style.borderColor.indexOf('226, 44, 8') !== -1 || style.borderColor.indexOf('226,44,8') !== -1) {
+                            var span = item.querySelector('span');
+                            return span ? span.textContent.trim() : '';
+                        }
+                    }
+                    var firstSpan = businessItems[0].querySelector('span');
+                    return firstSpan ? firstSpan.textContent.trim() : '';
+                }
+                return '';
+            """
+            selected_text = self.driver.execute_script(js_script)
+            
+            if selected_text:
+                logger.info(f"当前选中的支付方式: {selected_text}")
+                return selected_text
+            
             wait = self._get_wait(timeout=3)
             
             selected_payment_locators = [
                 self.SELECTED_PAYMENT,
                 self.SELECTED_PAYMENT_ALT,
+                self.SELECTED_PAYMENT_ALT2,
+                self.SELECTED_PAYMENT_ALT3,
             ]
             
             selected_element = None
@@ -477,6 +528,8 @@ class CheckoutPage:
             payment_options_locators = [
                 self.PAYMENT_OPTIONS,
                 self.PAYMENT_OPTIONS_ALT,
+                self.PAYMENT_OPTIONS_ALT2,
+                self.PAYMENT_OPTIONS_ALT3,
             ]
             
             payment_options = None
@@ -515,16 +568,61 @@ class CheckoutPage:
         logger.info(f"选择支付方式: {payment_name}")
         try:
             wait = self._get_wait(timeout=3)
+            wait.until(EC.presence_of_element_located((By.XPATH, "//div[contains(@class, 'business-item')]")))
+            
+            js_select_script = f"""
+                var businessItems = document.querySelectorAll('div.business-item');
+                for (var i = 0; i < businessItems.length; i++) {{
+                    var item = businessItems[i];
+                    var span = item.querySelector('span');
+                    if (span && span.textContent.trim().indexOf('{payment_name}') !== -1) {{
+                        item.scrollIntoView({{behavior: 'smooth', block: 'center'}});
+                        item.click();
+                        return true;
+                    }}
+                }}
+                return false;
+            """
+            
+            js_result = self.driver.execute_script(js_select_script)
+            if js_result:
+                time.sleep(0.5)
+                
+                verify_script = f"""
+                    var businessItems = document.querySelectorAll('div.business-item');
+                    for (var i = 0; i < businessItems.length; i++) {{
+                        var item = businessItems[i];
+                        var span = item.querySelector('span');
+                        var icon = item.querySelector('i.iconfont');
+                        if (span && span.textContent.trim().indexOf('{payment_name}') !== -1) {{
+                            return icon && icon.classList.contains('icon-subscript');
+                        }}
+                    }}
+                    return false;
+                """
+                
+                for _ in range(3):
+                    is_selected = self.driver.execute_script(verify_script)
+                    if is_selected:
+                        logger.info(f"支付方式 '{payment_name}' 选择成功")
+                        return True
+                    time.sleep(0.3)
+                
+                logger.info(f"支付方式 '{payment_name}' 选择成功（未验证图标状态）")
+                return True
             
             payment_options_locators = [
                 self.PAYMENT_OPTIONS,
                 self.PAYMENT_OPTIONS_ALT,
+                self.PAYMENT_OPTIONS_ALT2,
+                self.PAYMENT_OPTIONS_ALT3,
             ]
             
             payment_options = None
             for by, selector in payment_options_locators:
                 try:
                     payment_options = wait.until(EC.visibility_of_all_elements_located((by, selector)))
+                    logger.info(f"找到支付方式选项，定位器: {selector}")
                     break
                 except TimeoutException:
                     continue
@@ -540,7 +638,7 @@ class CheckoutPage:
                     if payment_name in option_text:
                         self.driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", option)
                         time.sleep(0.3)
-                        option.click()
+                        self.driver.execute_script("arguments[0].click();", option)
                         time.sleep(0.5)
                         logger.info(f"支付方式 '{payment_name}' 选择成功")
                         return True

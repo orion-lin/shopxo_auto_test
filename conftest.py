@@ -93,17 +93,43 @@ def login_token(api_client):
 
     try:
         from utils.yaml_util import YamlUtil
+        from utils.captcha_util import captcha_util
 
         login_data = YamlUtil.read_test_data("api_data.yaml")
         login_info = login_data["login_api"]
 
+        env_config = api_client.env_config
+        base_url = env_config.get("base_url", "")
+
+        captcha = captcha_util.get_and_recognize_captcha(base_url)
+        if not captcha:
+            logger.warning("验证码获取失败")
+            yield token
+            return
+
         response = api_client.post(
             endpoint=login_info["path"],
-            json={
-                "username": login_info["username"],
-                "password": login_info["password"]
+            data={
+                "type": login_info["type"],
+                "accounts": login_info["accounts"],
+                "pwd": login_info["pwd"],
+                "verify": captcha
             }
         )
+
+        if response.get("code") == -10:
+            logger.info("验证码错误，重新获取验证码重试")
+            captcha = captcha_util.get_and_recognize_captcha(base_url)
+            if captcha:
+                response = api_client.post(
+                    endpoint=login_info["path"],
+                    data={
+                        "type": login_info["type"],
+                        "accounts": login_info["accounts"],
+                        "pwd": login_info["pwd"],
+                        "verify": captcha
+                    }
+                )
 
         token = response.get("data", {}).get("token", "")
 
@@ -111,7 +137,7 @@ def login_token(api_client):
             api_client.set_token(token)
             logger.info(f"登录成功，Token: {token[:20]}...")
         else:
-            logger.warning("登录接口未返回Token")
+            logger.warning(f"登录接口未返回Token，响应: {response}")
 
     except Exception as e:
         logger.error(f"登录失败: {str(e)}", exc_info=True)
