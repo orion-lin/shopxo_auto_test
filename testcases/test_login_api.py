@@ -24,14 +24,14 @@ class TestLoginAPI:
         """
         env_config = api_client.env_config
         base_url = env_config.get("base_url", "")
-        return captcha_util.get_and_recognize_captcha(base_url)
+        return captcha_util.get_and_recognize_captcha(base_url, session=api_client.get_session())
 
     def test_normal_login_api(self, api_client):
         """
         TC_LOGIN_API_001: 使用正确的账号和密码登录系统
 
         预期结果：
-            1. 登录接口返回code=200，msg="登录成功"，data携带有效token
+            1. 登录接口返回code=0，msg="登录成功"，data携带user_id
         """
         logger.info("=== TC_LOGIN_API_001: 验证使用正确账号密码登录 ===")
 
@@ -54,8 +54,8 @@ class TestLoginAPI:
 
         logger.info(f"登录响应: {response}")
 
-        if response.get("code") == -10:
-            logger.info("验证码错误，重新获取验证码重试")
+        if response.get("code") == -10 or response.get("code") == -11:
+            logger.info("验证码错误或过期，重新获取验证码重试")
             captcha = self._get_captcha(api_client)
             if captcha:
                 response = api_client.post(
@@ -71,7 +71,7 @@ class TestLoginAPI:
 
         AssertUtil.assert_response_code(
             response,
-            expected_code=200,
+            expected_code=login_info["success_code"],
             message=f"登录接口返回code错误：{response.get('code')}"
         )
 
@@ -81,10 +81,10 @@ class TestLoginAPI:
             message=f"登录接口返回msg错误：{response.get('msg')}"
         )
 
-        token = response.get("data", {}).get("token")
+        user_id = response.get("data", {}).get("user_id")
         AssertUtil.assert_is_not_none(
-            token,
-            message="登录接口未返回token"
+            user_id,
+            message="登录接口未返回user_id"
         )
 
         logger.info("TC_LOGIN_API_001 测试通过")
@@ -94,7 +94,7 @@ class TestLoginAPI:
         TC_LOGIN_API_002: 账号输入为空时调用登录接口
 
         预期结果：
-            1. 登录接口返回code=-1，msg="请输入登录账号"
+            1. 登录接口返回code=-1，msg="账号不能为空"
         """
         logger.info("=== TC_LOGIN_API_002: 验证账号为空时登录 ===")
 
@@ -133,7 +133,7 @@ class TestLoginAPI:
         TC_LOGIN_API_003: 密码输入为空时调用登录接口
 
         预期结果：
-            1. 登录接口返回code=-1，msg="密码格式6~18个字符之间"
+            1. 登录接口返回code=-1，msg="登录密码格式6~18个字符之间"
         """
         logger.info("=== TC_LOGIN_API_003: 验证密码为空时登录 ===")
 
@@ -196,8 +196,8 @@ class TestLoginAPI:
 
         logger.info(f"密码错误登录响应: {response}")
 
-        if response.get("code") == -10:
-            logger.info("验证码错误，重新获取验证码重试")
+        if response.get("code") == -10 or response.get("code") == -11:
+            logger.info("验证码错误或过期，重新获取验证码重试")
             captcha = self._get_captcha(api_client)
             if captcha:
                 response = api_client.post(
@@ -269,7 +269,7 @@ class TestLoginAPI:
         TC_LOGIN_API_006: 账号密码正确但验证码错误时调用登录接口
 
         预期结果：
-            1. 登录接口返回code=-10，msg="验证码错误"
+            1. 登录接口返回code=-11，msg="验证码已过期"
         """
         logger.info("=== TC_LOGIN_API_006: 验证验证码错误时登录 ===")
 

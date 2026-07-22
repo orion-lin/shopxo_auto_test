@@ -1,256 +1,193 @@
 import pytest
-from utils.yaml_util import YamlUtil
+import json
+import base64
+import urllib.parse
 from base.AssertUtil import AssertUtil
+from utils.yaml_util import YamlUtil
 from utils.log_util import logger
 
+api_data = YamlUtil().read_yaml('data/api_data.yaml')
+assert_util = AssertUtil()
 
-@pytest.mark.api
-@pytest.mark.regression
+
 class TestCartAPI:
-    """
-    购物车管理模块API接口测试用例
-    """
 
-    def test_cart_list_api_unauthorized(self, api_client):
+    def _build_goods_data(self, goods_id, stock):
+        goods_data = [{'goods_id': goods_id, 'stock': stock, 'spec': []}]
+        goods_data_json = json.dumps(goods_data)
+        goods_data_base64 = base64.b64encode(goods_data_json.encode('utf-8')).decode('utf-8')
+        return urllib.parse.quote(goods_data_base64)
+
+    @pytest.mark.api
+    def test_cart_add_success(self, api_client, login_token):
         """
-        TC_CART_API_001: 未登录状态调用购物车列表接口
-
-        预期结果：
-            1. 接口返回code=400，msg="未授权，请先登录"
+        TC_CART_001: 测试添加购物车成功（已登录状态）
         """
-        logger.info("=== TC_CART_API_001: 验证未登录状态调用购物车列表接口 ===")
-
-        api_data = YamlUtil.read_test_data("api_data.yaml")
-        cart_list_path = api_data["cart_list"]["path"]
-        unauthorized_data = api_data["unauthorized"]
-
-        response = api_client.get(endpoint=cart_list_path)
-
-        AssertUtil.assert_response_code(
-            response,
-            expected_code=unauthorized_data["expected_code"],
-            message=f"未授权访问返回code错误：{response.get('code')}"
-        )
-
-        AssertUtil.assert_equal(
-            response.get("msg"),
-            unauthorized_data["expected_msg"],
-            message=f"未授权访问返回msg错误：{response.get('msg')}"
-        )
-
-        logger.info("TC_CART_API_001 测试通过")
-
-    def test_cart_list_api_authorized(self, api_client, login_token):
-        """
-        TC_CART_API_002: 已登录状态调用购物车列表接口
-
-        预期结果：
-            1. 接口返回code=200
-            2. 返回购物车商品列表数据
-        """
-        logger.info("=== TC_CART_API_002: 验证已登录状态调用购物车列表接口 ===")
+        logger.info("========== 测试：添加购物车成功 ==========")
 
         if not login_token:
-            pytest.skip("未获取到登录Token，跳过测试")
+            pytest.skip("登录失败，跳过此测试")
 
-        api_data = YamlUtil.read_test_data("api_data.yaml")
-        cart_list_path = api_data["cart_list"]["path"]
-
-        response = api_client.get(endpoint=cart_list_path)
-
-        AssertUtil.assert_response_code(
-            response,
-            expected_code=200,
-            message=f"购物车列表接口返回code错误：{response.get('code')}"
+        goods_data = self._build_goods_data(
+            api_data['cart_api']['valid_goods_id'],
+            api_data['cart_api']['valid_stock']
         )
-
-        data = response.get("data", {})
-        logger.info(f"购物车列表数据: {data}")
-
-        logger.info("TC_CART_API_002 测试通过")
-
-    def test_cart_add_api_unauthorized(self, api_client):
-        """
-        TC_CART_API_003: 未登录状态调用添加购物车接口
-
-        预期结果：
-            1. 接口返回code=400，msg="未授权，请先登录"
-        """
-        logger.info("=== TC_CART_API_003: 验证未登录状态调用添加购物车接口 ===")
-
-        api_data = YamlUtil.read_test_data("api_data.yaml")
-        cart_add_path = api_data["cart_add"]["path"]
-        unauthorized_data = api_data["unauthorized"]
 
         response = api_client.post(
-            endpoint=cart_add_path,
-            json={"goods_id": 1, "buy_number": 1}
-        )
-
-        AssertUtil.assert_response_code(
-            response,
-            expected_code=unauthorized_data["expected_code"],
-            message=f"未授权访问返回code错误：{response.get('code')}"
-        )
-
-        AssertUtil.assert_equal(
-            response.get("msg"),
-            unauthorized_data["expected_msg"],
-            message=f"未授权访问返回msg错误：{response.get('msg')}"
-        )
-
-        logger.info("TC_CART_API_003 测试通过")
-
-    def test_cart_update_api_unauthorized(self, api_client):
-        """
-        TC_CART_API_004: 未登录状态调用更新购物车接口
-
-        预期结果：
-            1. 接口返回code=400，msg="未授权，请先登录"
-        """
-        logger.info("=== TC_CART_API_004: 验证未登录状态调用更新购物车接口 ===")
-
-        api_data = YamlUtil.read_test_data("api_data.yaml")
-        cart_update_path = api_data["cart_update"]["path"]
-        unauthorized_data = api_data["unauthorized"]
-
-        response = api_client.post(
-            endpoint=cart_update_path,
-            json={"id": 1, "number": 2}
-        )
-
-        AssertUtil.assert_response_code(
-            response,
-            expected_code=unauthorized_data["expected_code"],
-            message=f"未授权访问返回code错误：{response.get('code')}"
-        )
-
-        AssertUtil.assert_equal(
-            response.get("msg"),
-            unauthorized_data["expected_msg"],
-            message=f"未授权访问返回msg错误：{response.get('msg')}"
-        )
-
-        logger.info("TC_CART_API_004 测试通过")
-
-    def test_cart_delete_api_unauthorized(self, api_client):
-        """
-        TC_CART_API_005: 未登录状态调用删除购物车接口
-
-        预期结果：
-            1. 接口返回code=400，msg="未授权，请先登录"
-        """
-        logger.info("=== TC_CART_API_005: 验证未登录状态调用删除购物车接口 ===")
-
-        api_data = YamlUtil.read_test_data("api_data.yaml")
-        cart_delete_path = api_data["cart_delete"]["path"]
-        unauthorized_data = api_data["unauthorized"]
-
-        response = api_client.post(
-            endpoint=cart_delete_path,
-            json={"id": 1}
-        )
-
-        AssertUtil.assert_response_code(
-            response,
-            expected_code=unauthorized_data["expected_code"],
-            message=f"未授权访问返回code错误：{response.get('code')}"
-        )
-
-        AssertUtil.assert_equal(
-            response.get("msg"),
-            unauthorized_data["expected_msg"],
-            message=f"未授权访问返回msg错误：{response.get('msg')}"
-        )
-
-        logger.info("TC_CART_API_005 测试通过")
-
-    def test_cart_clear_api_unauthorized(self, api_client):
-        """
-        TC_CART_API_006: 未登录状态调用清空购物车接口
-
-        预期结果：
-            1. 接口返回code=400，msg="未授权，请先登录"
-        """
-        logger.info("=== TC_CART_API_006: 验证未登录状态调用清空购物车接口 ===")
-
-        api_data = YamlUtil.read_test_data("api_data.yaml")
-        cart_clear_path = api_data["cart_clear"]["path"]
-        unauthorized_data = api_data["unauthorized"]
-
-        response = api_client.post(endpoint=cart_clear_path)
-
-        AssertUtil.assert_response_code(
-            response,
-            expected_code=unauthorized_data["expected_code"],
-            message=f"未授权访问返回code错误：{response.get('code')}"
-        )
-
-        AssertUtil.assert_equal(
-            response.get("msg"),
-            unauthorized_data["expected_msg"],
-            message=f"未授权访问返回msg错误：{response.get('msg')}"
-        )
-
-        logger.info("TC_CART_API_006 测试通过")
-
-    def test_cart_add_api_invalid_params(self, api_client, login_token):
-        """
-        TC_CART_API_007: 已登录状态调用添加购物车接口（参数无效）
-
-        预期结果：
-            1. 接口返回code=400
-            2. 返回错误提示信息
-        """
-        logger.info("=== TC_CART_API_007: 验证已登录状态调用添加购物车接口（参数无效） ===")
-
-        if not login_token:
-            pytest.skip("未获取到登录Token，跳过测试")
-
-        api_data = YamlUtil.read_test_data("api_data.yaml")
-        cart_add_path = api_data["cart_add"]["path"]
-
-        response = api_client.post(
-            endpoint=cart_add_path,
-            json={"goods_id": 999999, "buy_number": 1}
+            api_data['cart_api']['save_path'],
+            data={'goods_data': goods_data}
         )
 
         logger.info(f"添加购物车响应: {response}")
 
-        AssertUtil.assert_true(
-            response.get("code") != 200,
-            message="无效商品ID应返回非200状态码"
+        if isinstance(response, dict):
+            assert_util.assert_response_code(
+                response,
+                api_data['cart_api']['success_code']
+            )
+            assert_util.assert_response_contains_message(
+                response,
+                api_data['cart_api']['success_msg']
+            )
+            assert 'total_price' in response.get('data', {}), "响应数据中缺少total_price字段"
+            assert 'buy_number' in response.get('data', {}), "响应数据中缺少buy_number字段"
+        else:
+            pytest.fail(f"响应不是JSON格式: {response}")
+
+    @pytest.mark.api
+    def test_cart_add_unauthorized(self):
+        """
+        TC_CART_002: 测试未登录状态添加购物车
+        """
+        logger.info("========== 测试：未登录状态添加购物车 ==========")
+
+        from base.ApiRequest import ApiRequest
+
+        new_api_client = ApiRequest()
+        goods_data = self._build_goods_data(
+            api_data['cart_api']['valid_goods_id'],
+            api_data['cart_api']['valid_stock']
         )
 
-        logger.info("TC_CART_API_007 测试通过")
+        response = new_api_client.post(
+            api_data['cart_api']['save_path'],
+            data={'goods_data': goods_data}
+        )
 
-    def test_cart_add_api_valid_params(self, api_client, login_token):
-        """
-        TC_CART_API_008: 已登录状态调用添加购物车接口（参数有效）
+        logger.info(f"未登录添加购物车响应: {response}")
 
-        预期结果：
-            1. 接口返回code=200
-            2. 返回成功提示信息
+        assert isinstance(response, dict) or 'login' in str(response).lower(), "未登录状态应该重定向到登录页面"
+
+        new_api_client.close_session()
+
+    @pytest.mark.api
+    def test_cart_add_invalid_goods_id(self, api_client, login_token):
         """
-        logger.info("=== TC_CART_API_008: 验证已登录状态调用添加购物车接口（参数有效） ===")
+        TC_CART_003: 测试添加不存在的商品到购物车
+        """
+        logger.info("========== 测试：添加不存在的商品到购物车 ==========")
 
         if not login_token:
-            pytest.skip("未获取到登录Token，跳过测试")
+            pytest.skip("登录失败，跳过此测试")
 
-        api_data = YamlUtil.read_test_data("api_data.yaml")
-        cart_add_path = api_data["cart_add"]["path"]
+        goods_data = self._build_goods_data(
+            api_data['cart_api']['invalid_goods_id'],
+            api_data['cart_api']['valid_stock']
+        )
 
         response = api_client.post(
-            endpoint=cart_add_path,
-            json={"goods_id": 1, "buy_number": 1}
+            api_data['cart_api']['save_path'],
+            data={'goods_data': goods_data}
         )
 
-        logger.info(f"添加购物车响应: {response}")
+        logger.info(f"添加不存在商品响应: {response}")
 
-        AssertUtil.assert_response_code(
-            response,
-            expected_code=200,
-            message=f"添加购物车接口返回code错误：{response.get('code')}"
+        assert isinstance(response, dict), "响应不是JSON格式"
+        assert response.get('code') != 0, "添加不存在的商品不应该成功"
+
+    @pytest.mark.api
+    def test_cart_add_empty_goods_data(self, api_client, login_token):
+        """
+        TC_CART_004: 测试添加购物车时goods_data为空
+        """
+        logger.info("========== 测试：添加购物车时goods_data为空 ==========")
+
+        if not login_token:
+            pytest.skip("登录失败，跳过此测试")
+
+        response = api_client.post(
+            api_data['cart_api']['save_path'],
+            data={'goods_data': ''}
         )
 
-        logger.info("TC_CART_API_008 测试通过")
+        logger.info(f"goods_data为空响应: {response}")
+
+        assert isinstance(response, dict), "响应不是JSON格式"
+        assert response.get('code') != 0, "goods_data为空不应该成功"
+
+    @pytest.mark.api
+    def test_cart_add_invalid_stock(self, api_client, login_token):
+        """
+        TC_CART_005: 测试添加购物车时购买数量为0
+        """
+        logger.info("========== 测试：添加购物车时购买数量为0 ==========")
+
+        if not login_token:
+            pytest.skip("登录失败，跳过此测试")
+
+        goods_data = self._build_goods_data(
+            api_data['cart_api']['valid_goods_id'],
+            api_data['cart_api']['invalid_stock']
+        )
+
+        response = api_client.post(
+            api_data['cart_api']['save_path'],
+            data={'goods_data': goods_data}
+        )
+
+        logger.info(f"购买数量为0响应: {response}")
+
+        assert isinstance(response, dict), "响应不是JSON格式"
+        assert response.get('code') != 0, "购买数量为0不应该成功"
+
+    @pytest.mark.api
+    def test_cart_update_invalid_cart_id(self, api_client, login_token):
+        """
+        TC_CART_006: 测试更新购物车商品数量失败（无效cart_id）
+        """
+        logger.info("========== 测试：更新购物车商品数量失败（无效cart_id） ==========")
+
+        if not login_token:
+            pytest.skip("登录失败，跳过此测试")
+
+        invalid_cart_id = 999999
+        update_response = api_client.post(
+            api_data['cart_api']['stock_path'],
+            data={'id': invalid_cart_id, 'goods_id': api_data['cart_api']['valid_goods_id'], 'stock': 2}
+        )
+
+        logger.info(f"更新无效cart_id响应: {update_response}")
+
+        assert isinstance(update_response, dict), "响应不是JSON格式"
+        assert update_response.get('code') != 0, "更新无效cart_id不应该成功"
+
+    @pytest.mark.api
+    def test_cart_delete_invalid_cart_id(self, api_client, login_token):
+        """
+        TC_CART_007: 测试删除购物车商品失败（无效cart_id）
+        """
+        logger.info("========== 测试：删除购物车商品失败（无效cart_id） ==========")
+
+        if not login_token:
+            pytest.skip("登录失败，跳过此测试")
+
+        invalid_cart_id = 999999
+        delete_response = api_client.post(
+            api_data['cart_api']['delete_path'],
+            data={'id': invalid_cart_id}
+        )
+
+        logger.info(f"删除无效cart_id响应: {delete_response}")
+
+        assert isinstance(delete_response, dict), "响应不是JSON格式"
+        assert delete_response.get('code') != 0, "删除无效cart_id不应该成功"

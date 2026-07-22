@@ -14,14 +14,16 @@ class CaptchaUtil:
         初始化验证码工具类
         """
         self.ocr = ddddocr.DdddOcr()
+        self.session = requests.Session()
         logger.info("验证码工具类初始化成功")
 
-    def get_and_recognize_captcha(self, base_url, max_retries=5):
+    def get_and_recognize_captcha(self, base_url, session=None, max_retries=5):
         """
         获取验证码图片并识别
 
         Args:
             base_url (str): 基础URL
+            session (requests.Session): 外部session对象，用于保持会话一致性
             max_retries (int): 最大重试次数，默认5次
 
         Returns:
@@ -29,18 +31,23 @@ class CaptchaUtil:
         """
         logger.info("开始获取并识别验证码")
 
+        request_session = session if session else self.session
+
         for attempt in range(max_retries):
             try:
+                login_page_url = f"{base_url.rstrip('/')}/?s=user/loginInfo.html"
+                request_session.get(login_page_url, timeout=5)
+
                 captcha_urls = [
+                    f"{base_url.rstrip('/')}/?s=user/userverifyentry/type/user_login.html",
                     f"{base_url.rstrip('/')}/api/user/verify",
                     f"{base_url.rstrip('/')}/?s=api/user/verify",
-                    f"{base_url.rstrip('/')}/index.php?s=api/user/verify",
-                    f"{base_url.rstrip('/')}/admin.php?s=/User/Verify"
+                    f"{base_url.rstrip('/')}/user/verify"
                 ]
 
                 for captcha_url in captcha_urls:
                     try:
-                        response = requests.get(captcha_url, timeout=5)
+                        response = request_session.get(captcha_url, timeout=5)
 
                         if response.status_code == 200 and len(response.content) > 100:
                             captcha_text = self.ocr.classification(response.content)

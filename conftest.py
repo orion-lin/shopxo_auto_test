@@ -78,18 +78,18 @@ def api_client():
 @pytest.fixture(scope="session")
 def login_token(api_client):
     """
-    全局登录Token fixture（session级别）
-    调用登录接口获取Token，用于需要已登录状态的测试用例
+    全局登录状态fixture（session级别）
+    调用登录接口完成登录，使用session保持登录状态，用于需要已登录状态的测试用例
 
     Args:
         api_client: API请求客户端fixture
 
     Returns:
-        str: 登录Token值（未登录时返回空字符串）
+        bool: 登录成功返回True，失败返回False
     """
-    logger.info("========== 获取全局登录Token ==========")
+    logger.info("========== 执行全局登录 ==========")
 
-    token = ""
+    login_success = False
 
     try:
         from utils.yaml_util import YamlUtil
@@ -101,10 +101,10 @@ def login_token(api_client):
         env_config = api_client.env_config
         base_url = env_config.get("base_url", "")
 
-        captcha = captcha_util.get_and_recognize_captcha(base_url)
+        captcha = captcha_util.get_and_recognize_captcha(base_url, session=api_client.get_session())
         if not captcha:
             logger.warning("验证码获取失败")
-            yield token
+            yield login_success
             return
 
         response = api_client.post(
@@ -119,7 +119,7 @@ def login_token(api_client):
 
         if response.get("code") == -10:
             logger.info("验证码错误，重新获取验证码重试")
-            captcha = captcha_util.get_and_recognize_captcha(base_url)
+            captcha = captcha_util.get_and_recognize_captcha(base_url, session=api_client.get_session())
             if captcha:
                 response = api_client.post(
                     endpoint=login_info["path"],
@@ -131,23 +131,21 @@ def login_token(api_client):
                     }
                 )
 
-        token = response.get("data", {}).get("token", "")
-
-        if token:
-            api_client.set_token(token)
-            logger.info(f"登录成功，Token: {token[:20]}...")
+        if response.get("code") == login_info["success_code"]:
+            login_success = True
+            logger.info(f"登录成功，响应: {response}")
         else:
-            logger.warning(f"登录接口未返回Token，响应: {response}")
+            logger.warning(f"登录失败，响应: {response}")
 
     except Exception as e:
         logger.error(f"登录失败: {str(e)}", exc_info=True)
 
-    if not token:
-        logger.warning("未执行登录逻辑，Token为空，测试将在未登录状态下执行")
+    if not login_success:
+        logger.warning("登录失败，测试将在未登录状态下执行")
 
-    yield token
+    yield login_success
 
-    logger.info("========== 登录Token会话结束 ==========")
+    logger.info("========== 登录会话结束 ==========")
 
 
 @pytest.fixture(scope="class")

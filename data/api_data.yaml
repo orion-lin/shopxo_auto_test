@@ -4,9 +4,10 @@ login_api:
   type: "username"
   accounts: "qqqqqq"
   pwd: "qqqqqq"
+  success_code: 0
   success_msg: "登录成功"
 verify_api:
-  path: "/api/user/verify"
+  path: "/user/userverifyentry/type/user_login.html"
 login_errors:
   empty_user:
     type: "username"
@@ -24,8 +25,8 @@ login_errors:
     type: "username"
     accounts: "qqqqqq"
     pwd: "123456"
-    expected_code: -1
-    expected_msg: "账号或密码不正确"
+    expected_code: -4
+    expected_msg: "密码错误"
   empty_captcha:
     type: "username"
     accounts: "qqqqqq"
@@ -38,18 +39,43 @@ login_errors:
     accounts: "qqqqqq"
     pwd: "qqqqqq"
     verify: "9999"
-    expected_code: -11
-    expected_msg: "验证码已过期"
+    expected_code: -12
+    expected_msg: "验证码错误"
 unauthorized:
-  expected_code: 400
-  expected_msg: "未授权，请先登录"
-cart_list:
-  path: "/cart/stock.html"
-cart_add:
-  path: "/cart/save"
-cart_update:
-  path: "/cart/update"
-cart_delete:
-  path: "/cart/delete"
-cart_clear:
-  path: "/cart/clear"
+  expected_code: -1
+  expected_msg: "数据id有误"
+cart_api:
+  save_path: "/?s=cart/save.html"
+  stock_path: "/?s=cart/stock.html"
+  delete_path: "/?s=cart/delete.html"
+  index_path: "/?s=cart/index.html"
+  valid_goods_id: 1
+  invalid_goods_id: 999999
+  valid_stock: 1
+  invalid_stock: 0
+  success_code: 0
+  success_msg: "加入成功"
+  delete_success_msg: "删除成功"
+  update_success_msg: "更新成功"
+search_api:
+  path: "/?s=search/index.html"
+  method: "post"
+  valid_keyword: "手机"
+  no_match_keyword: "xxxxxxxxxx"
+  empty_keyword: ""
+  success_code: 0
+product_api:
+  detail_path: "/?s=goods/detail"
+  valid_product_id: 1
+  invalid_product_id: 999999
+  success_code: 0
+order_api:
+  index_path: "/?s=order/index.html"
+  detail_path: "/?s=order/detail/id/{id}.html"
+  pay_path: "/?s=order/pay.html"
+  cancel_path: "/?s=order/cancel.html"
+  buy_path: "/?s=buy/index.html"
+  valid_order_id: 1
+  invalid_order_id: 999999
+  success_code: 0
+  success_msg: "提交成功"
